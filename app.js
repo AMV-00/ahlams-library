@@ -189,7 +189,8 @@ function addMsg(who,text,keep=true){
   if(keep) history.push({role:who==="me"?"user":"assistant",content:text});
   return span;
 }
-function speak(t){ try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t.slice(0,1900)); u.lang=/[؀-ۿ]/.test(t)?"ar-SA":"en-US"; speechSynthesis.speak(u);}catch(e){} }
+function speak(t){ window.LibVoice.speak(t); }
+function stopSpeaking(){ window.LibVoice.stop(); }
 async function ask(text){
   if(busy||!text.trim()) return;
   busy=true; addMsg("me",text); setPose("think"); const bubble=addMsg("cat",C().think,false);
@@ -197,7 +198,7 @@ async function ask(text){
     const {data,error}=await sb.functions.invoke("cat",{body:{messages:history,name:name}});
     if(error||!data||!data.text) throw (error||new Error("empty"));
     bubble.textContent=data.text; history.push({role:"assistant",content:data.text}); setPose("explain",4000); if(voice) speak(data.text);
-  }catch(e){ console.error(e); bubble.textContent=C().err; history.pop(); setPose("happy"); }
+  }catch(e){ try{ if(e&&e.context&&e.context.json) console.error("cat error body:",await e.context.json()); }catch(_){} console.error(e); bubble.textContent=C().err; history.pop(); setPose("happy"); }
   finally{ busy=false; $("msgs").scrollTop=1e9; }
 }
 function openChat(){ $("chat").hidden=false; paintCat(); $("askIn").focus(); }
@@ -205,7 +206,7 @@ function onStatus(it){ if(it.status===2){ setPose("celebrate",3000); const t=$("
 $("cat").onclick=()=>{ $("chat").hidden?openChat():($("chat").hidden=true); };
 $("closeChat").onclick=()=>{ $("chat").hidden=true; };
 $("setBtn").onclick=()=>{ const f=$("setForm"); f.hidden=!f.hidden; $("nameIn").value=name; if(!f.hidden) $("nameIn").focus(); };
-$("voiceBtn").onclick=()=>{ voice=!voice; $("voiceBtn").setAttribute("aria-pressed",voice); if(!voice) try{speechSynthesis.cancel()}catch(e){} };
+$("voiceBtn").onclick=()=>{ voice=!voice; $("voiceBtn").setAttribute("aria-pressed",voice); if(!voice) stopSpeaking(); };
 $("setForm").onsubmit=async e=>{ e.preventDefault(); name=$("nameIn").value.trim(); paintCat(); $("setForm").hidden=true; await sb.from("config").upsert({key:"assistant",value:{name}}); };
 $("askForm").onsubmit=e=>{ e.preventDefault(); const v=$("askIn").value; $("askIn").value=""; ask(v); };
 $("quick").onclick=e=>{ const b=e.target.closest("button"); if(b) ask(b.textContent); };

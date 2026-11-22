@@ -2,7 +2,7 @@
 // GROQ_API_KEY lives ONLY in Supabase secrets:  supabase secrets set GROQ_API_KEY=...
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const MODEL = Deno.env.get("GROQ_MODEL") ?? "llama-3.3-70b-versatile";
+const MODEL = Deno.env.get("GROQ_MODEL") ?? "openai/gpt-oss-120b";
 const ALLOWED = (Deno.env.get("ALLOWED_ORIGINS") ?? "https://amv-00.github.io,http://localhost:8080").split(",");
 
 function cors(req: Request) {
@@ -56,9 +56,18 @@ ${lib}`;
   const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, temperature: 0.6, max_tokens: 700, messages: [{ role: "system", content: system }, ...msgs] }),
+    body: JSON.stringify({
+      model: MODEL, temperature: 0.6, max_completion_tokens: 1500,
+      reasoning_effort: "low", include_reasoning: false,
+      messages: [{ role: "system", content: system }, ...msgs],
+    }),
   });
-  if (!r.ok) { console.error("groq", r.status); return json(req, { error: "upstream" }, 502); }
+  if (!r.ok) {
+    // Log status + Groq's error message only (never the key or request headers).
+    const t = (await r.text()).slice(0, 400);
+    console.error("groq error", r.status, MODEL, t);
+    return json(req, { error: "upstream", status: r.status, detail: t.slice(0, 200) }, 502);
+  }
   const j = await r.json();
   return json(req, { text: j.choices?.[0]?.message?.content ?? "" });
 });

@@ -4,3 +4,6 @@
 - [Stubbed e2e result](results/2026-11-22-e2e-stubbed-supabase.md)
 - [Lesson: precedence bug](lessons/artifact-grid-precedence-bug.md)
 Open: real Supabase/Groq end-to-end not yet run (needs Ahlam's project + secret).
+- [Lesson: Groq model deprecation](lessons/groq-model-deprecation.md)
+- [Research: Groq Arabic TTS (not applied, pending Ahlam)](research/groq-tts-arabic.md)
+Open: real call to `cat` after the model fix must be confirmed with scripts/test-cat.mjs.
