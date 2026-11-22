@@ -5,3 +5,5 @@ data/seed.json
 supabase/.temp/
 node_modules/
 scripts/_tts-sample.wav
+scripts/_question.wav
+scripts/_reply-first-chunk.wav

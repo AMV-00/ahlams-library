@@ -1,7 +1,9 @@
 // Usage (bash): LIB_EMAIL=... LIB_PASSWORD=... node scripts/test-voice.mjs
-// Checks the REAL voice path end to end and prints timings. Prints no keys.
-//   1) cat (voice mode, streaming): time to first token + reply
-//   2) cat-tts (Groq Orpheus Arabic): status, bytes, WAV header, latency; saves scripts/_tts-sample.wav
+// Real end-to-end check of push-to-talk with the DEPLOYED functions, no keys printed:
+//   1) cat-tts makes Arabic speech from a sample question (Orpheus, voice noura)  -> used as "your recording"
+//   2) cat-voice: Whisper transcribes it and the fast model streams the reply     -> transcript, first token, total
+//   3) cat-tts speaks the first chunk of the reply                                 -> time to first audio byte
+// Prints an estimate of "release -> first sound" (no recorder/playback overhead; the real number is in the browser console).
 import { readFileSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 const c = readFileSync(new URL("../config.js", import.meta.url), "utf8");
@@ -9,25 +11,55 @@ const url = c.match(/SUPABASE_URL:\s*"([^"]+)"/)[1], anon = c.match(/SUPABASE_AN
 const sb = createClient(url, anon);
 const { data: s, error: ae } = await sb.auth.signInWithPassword({ email: process.env.LIB_EMAIL, password: process.env.LIB_PASSWORD });
 if (ae) { console.error("login failed:", ae.message); process.exit(1); }
-const H = { Authorization: "Bearer " + s.session.access_token, apikey: anon, "Content-Type": "application/json" };
+const H = { Authorization: "Bearer " + s.session.access_token, apikey: anon };
+const ms = t => Math.round(performance.now() - t) + " ms";
+const fail = (m, r, b) => { console.error("FAIL", m, r && r.status, (b || "").slice(0, 300)); process.exit(1); };
 
-let t0 = Date.now(), first = null, full = "";
-const r = await fetch(`${url}/functions/v1/cat`, { method: "POST", headers: H,
-  body: JSON.stringify({ mode: "voice", stream: true, messages: [{ role: "user", content: "وش أبدأ فيه الحين؟" }] }) });
-if (!r.ok) { console.error("CAT FAIL", r.status, (await r.text()).slice(0, 300)); process.exit(1); }
-const rd = r.body.getReader(), dec = new TextDecoder(); let buf = "";
-for (;;) { const { done, value } = await rd.read(); if (done) break; buf += dec.decode(value, { stream: true });
-  let i; while ((i = buf.indexOf("\n")) >= 0) { const l = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-    if (!l.startsWith("data:") || l.includes("[DONE]")) continue;
-    try { const d = JSON.parse(l.slice(5)).choices[0].delta.content; if (d) { if (first === null) first = Date.now() - t0; full += d; } } catch {} } }
-console.log(`CAT OK  first token ${first} ms, total ${Date.now() - t0} ms\n  reply: ${full}`);
+// warm-up pings (same as the page does when you press the button)
+let t = performance.now();
+await Promise.all(["cat-voice", "cat-tts"].map(f => fetch(`${url}/functions/v1/${f}`, { method: "POST", headers: { ...H, "x-warm": "1", "Content-Type": "application/json" }, body: "{}" })));
+console.log("warm-up:", ms(t));
 
-t0 = Date.now();
-const sentence = full.split(/(?<=[.!?؟])\s/)[0].slice(0, 200) || "مرحبا، أنا دوبي.";
-for (const voice of ["noura"]) {
-  const t = await fetch(`${url}/functions/v1/cat-tts`, { method: "POST", headers: H, body: JSON.stringify({ text: sentence, voice }) });
-  if (!t.ok) { console.error("TTS FAIL", t.status, (await t.text()).slice(0, 300)); process.exit(1); }
-  const b = Buffer.from(await t.arrayBuffer());
-  writeFileSync(new URL("./_tts-sample.wav", import.meta.url), b);
-  console.log(`TTS OK  ${voice}: ${b.length} bytes, header ${b.subarray(0, 4).toString()}/${b.subarray(8, 12).toString()}, ${Date.now() - t0} ms -> scripts/_tts-sample.wav`);
+// 1) a sample "recording"
+const QUESTION = "وش أبدأ فيه الحين؟";
+t = performance.now();
+let r = await fetch(`${url}/functions/v1/cat-tts`, { method: "POST", headers: { ...H, "Content-Type": "application/json" }, body: JSON.stringify({ text: QUESTION, voice: "lulwa" }) });
+if (!r.ok) fail("cat-tts (sample question)", r, await r.text());
+const wav = Buffer.from(await r.arrayBuffer()); console.log(`TTS sample question: ${wav.length} bytes in ${ms(t)}`);
+writeFileSync(new URL("./_question.wav", import.meta.url), wav);
+
+// 2) push-to-talk request
+t = performance.now();
+const fd = new FormData();
+fd.set("audio", new Blob([wav], { type: "audio/wav" }), "speech.wav");
+fd.set("meta", JSON.stringify({ messages: [], name: "Dobby", lang: "ar" }));
+r = await fetch(`${url}/functions/v1/cat-voice`, { method: "POST", headers: H, body: fd });
+if (!r.ok) fail("cat-voice", r, await r.text());
+const rd = r.body.getReader(), dec = new TextDecoder(); let buf = "", sttAt = 0, tokAt = 0, stt = "", reply = "", server = null, firstChunkAt = 0, firstChunk = "";
+for (;;) {
+  const { done, value } = await rd.read(); if (done) break; buf += dec.decode(value, { stream: true });
+  let i; while ((i = buf.indexOf("\n")) >= 0) {
+    const l = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!l.startsWith("data:")) continue;
+    const j = JSON.parse(l.slice(5));
+    if (j.error) fail("stream error " + JSON.stringify(j));
+    if (j.stt !== undefined) { sttAt = performance.now(); stt = j.stt; }
+    if (j.t) { if (!tokAt) tokAt = performance.now(); reply += j.t; if (!firstChunkAt && (/[.!?؟،,]/.test(reply) && reply.trim().split(/\s+/).length >= 3 || reply.trim().split(/\s+/).length >= 9)) { firstChunkAt = performance.now(); firstChunk = reply; } }
+    if (j.done && j.ms) server = j.ms;
+  }
 }
+console.log(`\ntranscript: «${stt}»   (you said «${QUESTION}»)`);
+console.log(`transcript arrived after ${Math.round(sttAt - t)} ms (server: ${server ? server.stt : "?"} ms)  |  first token ${Math.round(tokAt - t)} ms  |  first speakable chunk ${Math.round(firstChunkAt - t)} ms`);
+console.log(`reply: ${reply}`);
+if (!stt) fail("Whisper returned an empty transcript");
+
+// 3) first chunk -> TTS
+const chunk = (firstChunk || reply).trim().slice(0, 200);
+const t2 = performance.now();
+r = await fetch(`${url}/functions/v1/cat-tts`, { method: "POST", headers: { ...H, "Content-Type": "application/json" }, body: JSON.stringify({ text: chunk, voice: "noura" }) });
+if (!r.ok) fail("cat-tts (first chunk)", r, await r.text());
+const out = Buffer.from(await r.arrayBuffer()); const tts = performance.now() - t2;
+writeFileSync(new URL("./_reply-first-chunk.wav", import.meta.url), out);
+console.log(`TTS of the first chunk «${chunk}»: ${out.length} bytes in ${Math.round(tts)} ms (header ${out.subarray(0, 4)}/${out.subarray(8, 12)})`);
+const est = (firstChunkAt - t) + tts;
+console.log(`\n⏱ estimate release → first sound: ${Math.round(est)} ms ${est < 2000 ? "✓ under 2 s" : "✗ over 2 s"}  (upload + Whisper + model + TTS; the browser console prints the exact figure)`);
+console.log("saved scripts/_question.wav and scripts/_reply-first-chunk.wav so you can listen to Noura");

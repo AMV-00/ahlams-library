@@ -196,7 +196,8 @@ function paintCat(){
   $("quick").innerHTML=t.q.map(x=>`<button type="button">${esc(x)}</button>`).join("");
   if(!history.length){ $("msgs").innerHTML=""; addMsg("cat",t.hi(nm()),false); }
   $("voiceBtn").hidden=!("speechSynthesis" in window);
-  $("listenBtn").hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  $("listenBtn").hidden=!(navigator.mediaDevices&&window.MediaRecorder);
+  $("listenBtn").title=lang==="ar"?"اضغطي وامسكي وتكلمي (أو مسطرة المسافة)، وشيلي إصبعك للإرسال":"Hold and talk (or hold Space), let go to send";
   $("voiceSel").value=ttsVoice; $("voiceLbl").textContent=lang==="ar"?"الصوت":"Voice";
   if(window.LibDobby) LibDobby.refreshStatus();
 }

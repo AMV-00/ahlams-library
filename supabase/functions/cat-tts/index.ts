@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
   const key = Deno.env.get("GROQ_API_KEY");
   if (!key) return json(req, { error: "not configured" }, 503);
   if (!userFromJwt(req)) return json(req, { error: "unauthorized" }, 401);
+  if (req.headers.get("x-warm")) return new Response(null, { status: 204, headers: cors(req) });   // pre-warm ping: no Groq call
 
   let b: { text?: string; voice?: string };
   try { b = await req.json(); } catch { return json(req, { error: "bad json" }, 400); }
