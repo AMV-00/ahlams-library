@@ -7,3 +7,4 @@ Open: real Supabase/Groq end-to-end not yet run (needs Ahlam's project + secret)
 - [Lesson: Groq model deprecation](lessons/groq-model-deprecation.md)
 - [Research: Groq Arabic TTS (not applied, pending Ahlam)](research/groq-tts-arabic.md)
 Open: real call to `cat` after the model fix must be confirmed with scripts/test-cat.mjs.
+- 2026-11-22: cat replies render Markdown via md.js (own escaped renderer, no deps); voice.clean strips markdown/tables/HTML. e2e 22/22 incl. XSS payload neutralised (stubbed Supabase).

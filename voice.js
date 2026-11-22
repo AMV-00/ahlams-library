@@ -23,8 +23,17 @@ function pick(l) {
   return best;
 }
 function clean(t) {
-  return t.replace(/```[\s\S]*?```/g, " ").replace(/[*_#`>~|]/g, "")
+  return t
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]*>/g, " ")                                                         // raw HTML tags
+    .replace(/^[ \t]*\|?[ \t]*:?-{2,}:?[ \t]*(\|[ \t]*:?-{2,}:?[ \t]*)*\|?[ \t]*$/gm, "") // table separator rows
+    .replace(/^[ \t]*\|(.*)\|[ \t]*$/gm, (_, r) => r.split("|").map(x => x.trim()).filter(Boolean).join("\u060C ") + ".") // table rows
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")                                            // links -> their text
+    .replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, "").replace(/^[ \t]*(?:[-*+\u2022]|\d+[.)])[ \t]+/gm, "") // headings, bullets, numbers
+    .replace(/^[ \t]*>[ \t]?/gm, "").replace(/^[ \t]*([-*_])\1{2,}[ \t]*$/gm, "")
+    .replace(/[*_~`#|]/g, "")
     .replace(/https?:\/\/\S+/g, " ").replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "")
+    .replace(/([^.!?\u061F\u2026:,\u060C\s])[ \t]*\n+/g, "$1. ")                          // line break = sentence pause
     .replace(/\s+/g, " ").trim();
 }
 function split(t) {

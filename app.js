@@ -183,12 +183,13 @@ function paintCat(){
 }
 function addMsg(who,text,keep=true){
   const d=document.createElement("div"); d.className="m "+(who==="me"?"me":"cat-m");
-  const span=document.createElement("span"); span.textContent=text; d.appendChild(span);
-  if(who!=="me"&&"speechSynthesis" in window){const b=document.createElement("button");b.className="spk";b.type="button";b.textContent="🔈 "+C().listen;b.onclick=()=>speak(span.textContent);d.appendChild(b)}
+  const span=document.createElement("div"); span.className="body"; span.textContent=text; span.dataset.raw=text; d.appendChild(span);
+  if(who!=="me"&&"speechSynthesis" in window){const b=document.createElement("button");b.className="spk";b.type="button";b.textContent="🔈 "+C().listen;b.onclick=()=>speak(span.dataset.raw||span.textContent);d.appendChild(b)}
   $("msgs").appendChild(d); $("msgs").scrollTop=1e9;
   if(keep) history.push({role:who==="me"?"user":"assistant",content:text});
   return span;
 }
+function setReply(el,text){ el.dataset.raw=text; el.closest(".m").classList.add("md"); el.innerHTML=window.LibMd.render(text); $("msgs").scrollTop=1e9; }
 function speak(t){ window.LibVoice.speak(t); }
 function stopSpeaking(){ window.LibVoice.stop(); }
 async function ask(text){
@@ -197,8 +198,8 @@ async function ask(text){
   try{
     const {data,error}=await sb.functions.invoke("cat",{body:{messages:history,name:name}});
     if(error||!data||!data.text) throw (error||new Error("empty"));
-    bubble.textContent=data.text; history.push({role:"assistant",content:data.text}); setPose("explain",4000); if(voice) speak(data.text);
-  }catch(e){ try{ if(e&&e.context&&e.context.json) console.error("cat error body:",await e.context.json()); }catch(_){} console.error(e); bubble.textContent=C().err; history.pop(); setPose("happy"); }
+    setReply(bubble,data.text); history.push({role:"assistant",content:data.text}); setPose("explain",4000); if(voice) speak(data.text);
+  }catch(e){ try{ if(e&&e.context&&e.context.json) console.error("cat error body:",await e.context.json()); }catch(_){} console.error(e); bubble.dataset.raw=C().err; bubble.textContent=C().err; history.pop(); setPose("happy"); }
   finally{ busy=false; $("msgs").scrollTop=1e9; }
 }
 function openChat(){ $("chat").hidden=false; paintCat(); $("askIn").focus(); }
