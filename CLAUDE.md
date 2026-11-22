@@ -4,3 +4,4 @@
 - Before marking a task done, write any new decision, result, finding or reusable lesson to brain/ and update brain/index.md.
 ## Verification
 - Run `npm run check` (secret scan) and node --check on JS before any publish.
+- Run `npm run contrast` after any CSS colour/size change.

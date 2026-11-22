@@ -65,7 +65,22 @@ function applyLang(){
   $("hsub").textContent=u.sub; $("q").placeholder=u.q; $("lang").textContent=u.lang;
   $("secAr").placeholder=u.secName; $("secEn").placeholder=u.secEn; $("secSave").textContent=u.add; $("secCancel").textContent=u.cancel;
   $("tabs").setAttribute("aria-label",lang==="ar"?"الأقسام":"Sections");
+  paintTheme();
 }
+/* theme: dark (default) / light, remembered */
+function curTheme(){ return document.documentElement.dataset.theme==="light"?"light":"dark"; }
+function paintTheme(){
+  const light=curTheme()==="light";
+  $("theme").textContent=light?"🌙":"☀️";
+  const label=light?(lang==="ar"?"الوضع الغامق":"Dark mode"):(lang==="ar"?"الوضع الفاتح":"Light mode");
+  $("theme").setAttribute("aria-label",label); $("theme").title=label;
+}
+$("theme").addEventListener("click",()=>{
+  const next=curTheme()==="light"?"dark":"light";
+  document.documentElement.dataset.theme=next;
+  try{localStorage.setItem("lib-theme",next)}catch(_){}
+  paintTheme();
+});
 function visible(){
   const q=$("q").value.trim().toLowerCase();
   return items.filter(x=>(tab==="all"||x.tab===tab)&&(!q||[x.title,x.title_en,x.summary_ar,x.summary_en,x.sub,x.notes,TYPES[x.type]?.ar,TYPES[x.type]?.en].join(" ").toLowerCase().includes(q)));
