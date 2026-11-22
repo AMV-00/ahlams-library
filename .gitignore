@@ -1,0 +1,6 @@
+# personal data: keep out of the (public) Pages repo
+data/seed.json
+.env
+.env.*
+supabase/.temp/
+node_modules/

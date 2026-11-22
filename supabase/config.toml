@@ -1,0 +1,7 @@
+project_id = "ahlams-library"
+
+[auth]
+enable_signup = false
+
+[functions.cat]
+verify_jwt = true

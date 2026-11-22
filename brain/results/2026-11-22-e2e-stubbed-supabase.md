@@ -1,0 +1,2 @@
+# Result: UI e2e against stubbed Supabase
+Date 2026-11-22 | Setup: Chrome headless via playwright-core, routes mocking auth/rest/functions, real seed (81 items) | Outcome: 16/16 checks passed (login, wrong password, counts, search, countdown, status PATCH, EN/RTL, add/delete section, assistant call, phone width) | Conclusion: client logic OK; NOT verified against a real Supabase project or real Groq.
