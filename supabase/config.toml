@@ -5,3 +5,6 @@ enable_signup = false
 
 [functions.cat]
 verify_jwt = true
+
+[functions.cat-tts]
+verify_jwt = true

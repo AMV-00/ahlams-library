@@ -70,7 +70,19 @@ function speak(raw) {
     speechSynthesis.speak(u);
   })(0);
 }
+/** Speak ONE sentence with the best browser voice; resolves when finished or cancelled (used as the Groq TTS fallback). */
+function speakOne(raw) {
+  return new Promise(res => {
+    if (!ok) return res();
+    const text = clean(String(raw || "")); if (!text) return res();
+    const ar = (text.match(/[؀-ۿ]/g) || []).length, la = (text.match(/[A-Za-z]/g) || []).length;
+    const l = ar >= la ? "ar" : "en", v = pick(l), u = new SpeechSynthesisUtterance(text);
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = l === "ar" ? "ar-SA" : "en-US";
+    u.onend = u.onerror = () => res();
+    speechSynthesis.speak(u);
+  });
+}
 function stop() { gen++; if (ok) try { speechSynthesis.cancel(); } catch (e) {} }
 
-window.LibVoice = { speak, stop, pick, split, clean, setVoices(v) { voices = v; } };
+window.LibVoice = { speak, speakOne, stop, pick, split, clean, setVoices(v) { voices = v; } };
 })();

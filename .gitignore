@@ -4,3 +4,4 @@ data/seed.json
 .env.*
 supabase/.temp/
 node_modules/
+scripts/_tts-sample.wav

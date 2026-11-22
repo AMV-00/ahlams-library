@@ -130,3 +130,19 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .m.md th{background:var(--bg);font-weight:500;white-space:nowrap}
 .m.md tr:last-child td{border-bottom:0}
 .m.cat-m{max-width:94%}
+
+/* voice conversation */
+.vstatus{position:fixed;bottom:44px;inset-inline-start:128px;z-index:43;display:flex;align-items:center;gap:8px;max-width:min(320px,calc(100vw - 150px));background:var(--panel-2);border:1px solid var(--line-2);border-radius:999px;padding:8px 16px;font-size:13px;color:var(--ink)}
+.vstatus span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vstatus .dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--cyan)}
+.vstatus[data-s="waiting"] .dot{background:var(--cyan);animation:pulse 1.6s ease-in-out infinite}
+.vstatus[data-s="capturing"] .dot{background:#ff4d4d;animation:pulse .7s ease-in-out infinite}
+.vstatus[data-s="thinking"] .dot{background:var(--learn);animation:pulse 1s ease-in-out infinite}
+.vstatus[data-s="speaking"] .dot{background:var(--done)}
+@keyframes pulse{50%{transform:scale(1.6);opacity:.5}}
+.ib#listenBtn[aria-pressed="true"]{border-color:#ff4d4d;color:#ff7a7a;background:rgba(255,77,77,.12)}
+.cat.ear::after{content:"";position:absolute;inset:4px;border-radius:50%;border:2px solid var(--cyan);animation:ring 1.6s ease-out infinite;pointer-events:none}
+.cat.ear.hot::after{border-color:#ff4d4d}
+@keyframes ring{from{transform:scale(.9);opacity:.9}to{transform:scale(1.25);opacity:0}}
+.chat form.settings select{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:inherit;padding:6px 8px}
+@media (prefers-reduced-motion:reduce){.vstatus .dot,.cat.ear::after{animation:none!important}}

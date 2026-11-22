@@ -38,14 +38,15 @@ const UI = {
     loginErr:"Wrong email or password."}
 };
 const CAT = {
-  ar:{def:"قطوتي",ph:"اسأليني عن أي شي في مكتبتك",nameLbl:"اسمها",save:"حفظ",hi:n=>`هلا! أنا ${n}. أقدر أشرح لك أي مصدر، أختبرك، أو أقترح وش تبدين فيه.`,
+  ar:{def:"دوبي",ph:"اسأليني عن أي شي في مكتبتك",nameLbl:"اسمها",save:"حفظ",hi:n=>`هلا! أنا ${n}. أقدر أشرح لك أي مصدر، أختبرك، أو أقترح وش تبدين فيه.`,
     q:["وش أبدأ فيه الحين؟","اختبريني في مهارة FDE","لخصي لي قسم السيكيورتي"],think:"أفكر…",err:"ما قدرت أرد الحين، جربي بعد شوي.",
     done:n=>`أحسنتي! خلصتي «${n}» 🎉`,listen:"اسمعي"},
-  en:{def:"My cat",ph:"Ask me anything about your library",nameLbl:"Name",save:"Save",hi:n=>`Hi! I'm ${n}. I can explain any resource, quiz you, or suggest what to start next.`,
+  en:{def:"Dobby",ph:"Ask me anything about your library",nameLbl:"Name",save:"Save",hi:n=>`Hi! I'm ${n}. I can explain any resource, quiz you, or suggest what to start next.`,
     q:["What should I start now?","Quiz me on an FDE skill","Summarize my security section"],think:"Thinking…",err:"I couldn't answer right now, try again shortly.",
     done:n=>`Well done! You finished "${n}" 🎉`,listen:"Listen"}
 };
 
+let ttsVoice = "noura";
 let lang = "ar", tab = "all", statusFilter = null, items = [], custom = [], firstPaint = true, name = "";
 let TABS = BASE_TABS.slice();
 try { lang = localStorage.getItem("lib-lang") || "ar"; tab = localStorage.getItem("lib-tab") || "all"; } catch (e) {}
@@ -113,7 +114,7 @@ async function loadAll(){
   const conf=Object.fromEntries(cf.data.map(r=>[r.key,r.value]));
   const list=conf.sections&&conf.sections.list;
   custom=Array.isArray(list)?list.filter(c=>c&&c.id&&c.ar):[];
-  name=(conf.assistant&&conf.assistant.name)||"";
+  name=(conf.assistant&&conf.assistant.name)||""; ttsVoice=(conf.assistant&&conf.assistant.voice)||"noura";
   rebuildTabs(); window.__libItems=items;
 }
 async function saveSections(next){ const {error}=await sb.from("config").upsert({key:"sections",value:{list:next}}); if(error) throw error; }
@@ -161,7 +162,7 @@ $("login").addEventListener("submit",async e=>{
   $("loginBtn").disabled=false; $("pass").value="";
   if(error) showLogin(U().loginErr); else start();
 });
-$("logout").addEventListener("click",async()=>{await sb.auth.signOut();items=[];showLogin()});
+$("logout").addEventListener("click",async()=>{if(window.LibDobby)LibDobby.stop();await sb.auth.signOut();items=[];showLogin()});
 
 async function start(){
   $("login").hidden=true; $("app").hidden=false; $("catUi").hidden=false; applyLang(); setMsg(U().loading); render();
@@ -180,6 +181,9 @@ function paintCat(){
   $("quick").innerHTML=t.q.map(x=>`<button type="button">${esc(x)}</button>`).join("");
   if(!history.length){ $("msgs").innerHTML=""; addMsg("cat",t.hi(nm()),false); }
   $("voiceBtn").hidden=!("speechSynthesis" in window);
+  $("listenBtn").hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  $("voiceSel").value=ttsVoice; $("voiceLbl").textContent=lang==="ar"?"الصوت":"Voice";
+  if(window.LibDobby) LibDobby.refreshStatus();
 }
 function addMsg(who,text,keep=true){
   const d=document.createElement("div"); d.className="m "+(who==="me"?"me":"cat-m");
@@ -202,13 +206,16 @@ async function ask(text){
   }catch(e){ try{ if(e&&e.context&&e.context.json) console.error("cat error body:",await e.context.json()); }catch(_){} console.error(e); bubble.dataset.raw=C().err; bubble.textContent=C().err; history.pop(); setPose("happy"); }
   finally{ busy=false; $("msgs").scrollTop=1e9; }
 }
-function openChat(){ $("chat").hidden=false; paintCat(); $("askIn").focus(); }
+function openChat(noFocus){ $("chat").hidden=false; paintCat(); if(!noFocus) $("askIn").focus(); }
 function onStatus(it){ if(it.status===2){ setPose("celebrate",3000); const t=$("toast"); t.textContent=C().done(it.title); t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,3000); } }
 $("cat").onclick=()=>{ $("chat").hidden?openChat():($("chat").hidden=true); };
 $("closeChat").onclick=()=>{ $("chat").hidden=true; };
 $("setBtn").onclick=()=>{ const f=$("setForm"); f.hidden=!f.hidden; $("nameIn").value=name; if(!f.hidden) $("nameIn").focus(); };
 $("voiceBtn").onclick=()=>{ voice=!voice; $("voiceBtn").setAttribute("aria-pressed",voice); if(!voice) stopSpeaking(); };
-$("setForm").onsubmit=async e=>{ e.preventDefault(); name=$("nameIn").value.trim(); paintCat(); $("setForm").hidden=true; await sb.from("config").upsert({key:"assistant",value:{name}}); };
+$("setForm").onsubmit=async e=>{ e.preventDefault(); name=$("nameIn").value.trim(); ttsVoice=$("voiceSel").value||"noura"; paintCat(); $("setForm").hidden=true; await sb.from("config").upsert({key:"assistant",value:{name,voice:ttsVoice}}); };
+/* surface used by dobby.js (voice conversation) */
+window.LibApp={ sb, cfg, $, esc, C, nm, lang:()=>lang, history:()=>history, busy:()=>busy, setBusy:v=>{busy=v}, addMsg, setReply, setPose, openChat,
+  name:()=>name, ttsVoice:()=>ttsVoice, token:async()=>{const {data}=await sb.auth.getSession();return data.session&&data.session.access_token} };
 $("askForm").onsubmit=e=>{ e.preventDefault(); const v=$("askIn").value; $("askIn").value=""; ask(v); };
 $("quick").onclick=e=>{ const b=e.target.closest("button"); if(b) ask(b.textContent); };
 
