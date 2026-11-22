@@ -209,7 +209,7 @@ function addMsg(who,text,keep=true){
   return span;
 }
 function setReply(el,text){ el.dataset.raw=text; el.closest(".m").classList.add("md"); el.innerHTML=window.LibMd.render(text); $("msgs").scrollTop=1e9; }
-function speak(t){ window.LibVoice.speak(t); }
+function speak(t){ if(window.LibDobby) LibDobby.say(t); else window.LibVoice.speak(window.LibVoice.shortSpoken(t)); }   // always the SHORT spoken version, never the table
 function stopSpeaking(){ window.LibVoice.stop(); }
 async function ask(text){
   if(busy||!text.trim()) return;

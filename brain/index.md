@@ -10,3 +10,4 @@ Open: real call to `cat` after the model fix must be confirmed with scripts/test
 - 2026-11-22: cat replies render Markdown via md.js (own escaped renderer, no deps); voice.clean strips markdown/tables/HTML. e2e 22/22 incl. XSS payload neutralised (stubbed Supabase).
 - [Decision: voice conversation](decisions/2026-11-22-voice-conversation.md)  (e2e 34/34 stubbed; real mic/Groq TTS NOT yet tried; use scripts/test-voice.mjs)
 - [Decision: readable theme + light mode](decisions/2026-11-22-readable-theme.md) (npm run contrast must pass before publishing CSS changes)
+- [Lesson: wake word variants + live transcript](lessons/wake-word-asr-variants.md) (real recognition still unverified; ask Ahlam for [dobby] console lines)

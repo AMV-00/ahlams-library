@@ -1,0 +1,5 @@
+# Lesson: exact-match wake word failed silently (indicator on, Dobby never answered)
+What happened: indicator said "listening", nothing replied. Likely cause: ar-SA recognizers write the name in unpredictable forms, so a strict regex never matched; there was no way to see what the browser heard.
+Rule from now on: (1) show the live transcript under the indicator and log every result/event with "[dobby]" in the console; (2) fuzzy wake word: Arabic skeleton "دب" (starts د/ذ), Latin d+vowels+b/p, joined split tokens, glued "يا", custom name by edit distance <= 1; (3) first 12 s after pressing the mic a clear sentence (2+ words or 6+ letters) is a question without the name.
+Edge check (2026-11-22, Edge 158 headless, fake mic fed a WAV): mic, sound and speech events fire; the cloud recognizer returned an empty final result for English audio under ar-SA, and "network" errors on a second run, so real transcription could NOT be verified here. Only Ahlam's own mic proves the wake-word recall; send me the console lines starting with [dobby].
+Where enforced: dobby.js; wake-word table test (21 should-match / 13 should-not).

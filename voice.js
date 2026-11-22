@@ -82,7 +82,14 @@ function speakOne(raw) {
     speechSynthesis.speak(u);
   });
 }
+/** Spoken version of a WRITTEN (markdown) reply: drops tables and code, keeps the first 3 sentences (<= ~320 chars). */
+function shortSpoken(md, maxSentences = 3, maxChars = 320) {
+  const noTables = String(md || "").replace(/```[\s\S]*?```/g, " ").split("\n").filter(l => !/^\s*\|/.test(l)).join("\n");
+  const sents = split(clean(noTables)); let out = "";
+  for (let i = 0; i < sents.length && i < maxSentences; i++) { if (out && (out + " " + sents[i]).length > maxChars) break; out += (out ? " " : "") + sents[i]; }
+  return out.slice(0, maxChars + 80);
+}
 function stop() { gen++; if (ok) try { speechSynthesis.cancel(); } catch (e) {} }
 
-window.LibVoice = { speak, speakOne, stop, pick, split, clean, setVoices(v) { voices = v; } };
+window.LibVoice = { speak, speakOne, shortSpoken, stop, pick, split, clean, setVoices(v) { voices = v; } };
 })();
