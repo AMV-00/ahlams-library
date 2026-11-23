@@ -259,6 +259,7 @@ function paintCat(){
   $("voiceSel").value=ttsVoice; $("voiceLbl").textContent=lang==="ar"?"الصوت":"Voice";
   if(window.LibDobby) LibDobby.refreshStatus();
   if(window.LibAttach) LibAttach.paint();
+  if(window.LibChats) LibChats.paint();
 }
 function addMsg(who,text,keep=true){
   const d=document.createElement("div"); d.className="m "+(who==="me"?"me":"cat-m");
@@ -311,7 +312,7 @@ document.addEventListener("click",e=>{
   closeChat();
 });
 $("sizeBtn").onclick=()=>setChatMode(chatMode==="full"?"dock":"full");
-$("newChat").onclick=()=>{ if(busy) return; if(window.LibDobby) LibDobby.stop(); if(window.LibAttach) LibAttach.clear(); history.length=0; paintCat(); $("askIn").focus(); };
+$("newChat").onclick=()=>{ if(busy) return; if(window.LibDobby) LibDobby.stop(); if(window.LibAttach) LibAttach.clear(); if(window.LibChats) LibChats.reset(); history.length=0; paintCat(); $("askIn").focus(); };
 addEventListener("keydown",e=>{
   if(e.key!=="Escape"||$("chat").hidden) return;
   if(!$("setForm").hidden){ $("setForm").hidden=true; $("setBtn").setAttribute("aria-expanded","false"); return; }
@@ -323,7 +324,7 @@ $("setForm").onsubmit=async e=>{ e.preventDefault(); name=$("nameIn").value.trim
 /* surface used by dobby.js (voice conversation) */
 window.LibApp={ sb, cfg, $, esc, C, nm, lang:()=>lang, history:()=>history, busy:()=>busy, setBusy:v=>{busy=v}, addMsg, setReply, setPose, openChat,
   name:()=>name, ttsVoice:()=>ttsVoice, token:async()=>{const {data}=await sb.auth.getSession();return data.session&&data.session.access_token} };
-$("askForm").onsubmit=e=>{ e.preventDefault(); const v=$("askIn").value; $("askIn").value=""; growAsk(); ask(v); };
+$("askForm").onsubmit=e=>{ e.preventDefault(); if(window.LibChats) LibChats.hideList(); const v=$("askIn").value; $("askIn").value=""; growAsk(); ask(v); };
 $("askIn").addEventListener("input",growAsk);
 $("askIn").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); $("askForm").requestSubmit(); } });
 $("quick").onclick=e=>{ const b=e.target.closest("button"); if(b) ask(b.textContent); };
