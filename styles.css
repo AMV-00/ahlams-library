@@ -228,3 +228,27 @@ body{padding-bottom:140px}
 .foot>.ask{margin-inline-start:auto}
 @media (max-width:640px){body{padding:16px 12px 140px}.toolbar{margin:0 -12px;padding:10px 12px}h1{font-size:22px}.brand img{width:36px;height:36px}}
 body.chat-full .chat-h{padding-inline:max(16px,calc((100% - 860px)/2))}
+
+/* recommendations ("لك الحين") */
+.recs{background:var(--panel);border:1px solid var(--line-2);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.recs.off{background:transparent;border:0;padding:0;align-items:flex-start}
+.recs-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.recs-h h2{margin:0;font-size:17px;font-weight:500;color:var(--ink)}
+.recs-h p{margin:2px 0 0;font-size:13px;color:var(--ink-3)}
+.recs-toggle{background:transparent;border:1px solid var(--ctl);color:var(--ink-2);border-radius:999px;padding:4px 12px;font-size:13px;flex:none}
+.recs-toggle:hover{border-color:var(--ink-2);color:var(--ink)}
+.recs-toggle b{font-family:var(--mono);font-weight:400;color:var(--ink-3)}
+.recs-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:12px}
+.rec{background:var(--panel-2);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px;border-inline-start:3px solid var(--accent)}
+.rec.k-deadline{border-inline-start-color:var(--due)}
+.rec.k-continue{border-inline-start-color:var(--learn)}
+.rec .why{font-size:13px;color:var(--ink-2)}
+.rec.k-deadline .why{color:var(--due)}
+.rec .rt{font-weight:500;font-size:15px;line-height:1.45;color:var(--ink);overflow-wrap:anywhere}
+.rec .rm{font-size:13px;color:var(--ink-3)}
+.rec .ra{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
+.rb{font-size:13px;border:1px solid var(--ctl);background:transparent;color:var(--ink-2);border-radius:999px;padding:3px 10px;text-decoration:none;font-family:inherit}
+.rb:hover{border-color:var(--ink-2);color:var(--ink)}
+.rb.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.rb.main:hover{background:var(--accent-hover)}
+.rb.quiet{border-color:transparent;color:var(--ink-3)}

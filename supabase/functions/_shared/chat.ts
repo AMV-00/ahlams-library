@@ -1,5 +1,6 @@
 // Shared by `cat` (text chat) and `cat-voice` (push-to-talk). No secrets here.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { recsText } from "./recs.ts";
 
 // Library context cache per user (60 s) so repeated turns don't pay a DB round trip each time.
 const cache = new Map<string, { at: number; lib: string }>();
@@ -11,11 +12,14 @@ export async function getLibrary(req: Request, sub: string, max: number): Promis
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
   });
-  const { data, error } = await sb.from("items").select("tab,title,sub,status,due,summary_en,summary_ar").limit(500);
+  const { data, error } = await sb.from("items").select("id,tab,type,title,sub,status,due,added,updated_at,summary_en,summary_ar").limit(500);
   if (error) return null;
-  const lib = (data ?? []).map((x) =>
+  const rows = (data ?? []).map((x) =>
     `- [${x.tab}] ${x.title} | ${x.sub ?? ""} | status=${["not started", "learning", "done"][x.status] ?? "not started"}${x.due ? ` | due ${x.due}` : ""} | ${x.summary_en ?? x.summary_ar ?? ""}`
   ).join("\n");
+  // Put the recommendations first so they survive the length cut in voice mode.
+  const recs = recsText((data ?? []).map((x) => ({ ...x, status: Number(x.status) || 0 })));
+  const lib = (recs ? `RECOMMENDED NEXT (same list her site shows in "لك الحين"; best first):\n${recs}\n\nFULL LIBRARY:\n` : "") + rows;
   cache.set(sub, { at: Date.now(), lib });
   return lib.slice(0, max);
 }
@@ -23,7 +27,7 @@ export async function getLibrary(req: Request, sub: string, max: number): Promis
 export function buildSystem(opts: { name: string; voice: boolean; lib: string }): string {
   const base = `You are ${opts.name}, a friendly black-cat study companion inside Ahlam's private learning library. Ahlam is an IT graduate in Saudi Arabia targeting SOC, Blue Team and DFIR roles, and learning the Forward Deployed Engineer (FDE) track.
 Reply in the language she writes in: Saudi Arabic (simple, warm) or English. Keep technical terms in English.
-You can: explain a resource from her library, quiz her (one question at a time, wait for her answer, then explain), suggest what to start next based on status and due dates, or make a short study plan.
+You can: explain a resource from her library, quiz her (one question at a time, wait for her answer, then explain), suggest what to start next (when she asks what to do next, use the RECOMMENDED NEXT list and give the reason for each, briefly), or make a short study plan.
 Only recommend resources that are in the library below unless she asks for new ones; when you suggest something not in the library, say clearly it's from your general knowledge and she should verify the link. Never invent links.
 Today is ${new Date().toISOString().slice(0, 10)}.`;
   const style = opts.voice
