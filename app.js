@@ -20,7 +20,9 @@ const TYPES = {
   pdf:{ar:"ملف PDF",en:"PDF",ic:'<path d="M6 3h9l5 5v13H6z"/><path d="M14 3v5h5"/>'},
   thread:{ar:"ثريد",en:"Thread",ic:'<path d="M4 5h16v11H9l-5 4z"/>'},
   book:{ar:"كتاب",en:"Book",ic:'<path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-4a3 3 0 0 0-3 3"/>'},
-  lab:{ar:"لاب / CTF",en:"Lab / CTF",ic:'<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/>'}
+  lab:{ar:"لاب / CTF",en:"Lab / CTF",ic:'<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/>'},
+  job:{ar:"وظيفة",en:"Job",ic:'<path d="M4 8h16v11H4z"/><path d="M9 8V5h6v3"/><path d="M4 13h16"/>'},
+  event:{ar:"فعالية",en:"Event",ic:'<path d="M4 6h16v14H4z"/><path d="M4 10h16M8 3v5M16 3v5"/><path d="M9 15h2"/>'}
 };
 const STATUS = {ar:["ما بديت","أتعلم","خلصت"],en:["Not started","Learning","Done"]};
 const UI = {
