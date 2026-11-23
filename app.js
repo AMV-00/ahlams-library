@@ -92,6 +92,7 @@ function paintTheme(){
   $("theme").textContent=light?"🌙":"☀️";
   const label=light?(lang==="ar"?"الوضع الغامق":"Dark mode"):(lang==="ar"?"الوضع الفاتح":"Light mode");
   $("theme").setAttribute("aria-label",label); $("theme").title=label;
+  if(window.LibTrail) LibTrail.paint();
 }
 $("theme").addEventListener("click",()=>{
   const next=curTheme()==="light"?"dark":"light";
