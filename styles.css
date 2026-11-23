@@ -56,6 +56,10 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .additem input,.additem select,.additem textarea{flex:1 1 200px;min-width:0;background:var(--panel-2);border:1px solid var(--ctl);border-radius:8px;color:var(--ink);font:inherit;padding:8px 12px}
 .additem textarea{flex-basis:100%;resize:vertical;min-height:44px}
 .additem #itTitle{flex-basis:100%}
+.itfile{position:relative;flex:1 1 100%;display:flex;align-items:center;gap:8px;border:1px dashed var(--ctl);border-radius:8px;padding:10px 12px;color:var(--ink-2);cursor:pointer;min-width:0}
+.itfile:hover,.itfile:focus-within{border-color:var(--accent);color:var(--ink)}
+.itfile input{position:absolute;width:1px;height:1px;opacity:0}
+.itfile span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .addbtn{padding:6px 14px;font-size:14px;white-space:nowrap}
 .addsec input{flex:1 1 160px;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:inherit;padding:8px 12px}
 .save{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:8px 16px;font-weight:500}

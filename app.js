@@ -38,7 +38,7 @@ const UI = {
     clear:"مسح الفلاتر",clearAll:"امسحي البحث والفلاتر",more:"اقرئي المزيد",less:"أقل",stLabel:"الحالة",
     noMatchB:"جربي كلمة ثانية أو امسحي الفلاتر.",
     addItem:"+ إضافة",itTitle:"العنوان (مطلوب)",itUrl:"الرابط (https://…)",itSub:"وصف قصير (اختياري)",itSum:"ملخص أو ملاحظة (اختياري)",itType:"النوع",itTab:"القسم",
-    itNeed:"اكتبي العنوان أول.",itBadUrl:"الرابط لازم يبدأ بـ https://",itDup:"هذا الرابط موجود في مكتبتك.",itAdded:t=>`انضاف «${t}» ✓`},
+    itNeed:"اكتبي العنوان أو اختاري ملف.",myFile:"الملف",itFile:"📎 رفع ملف من جهازك (اختياري)",itUp:"جاري الرفع…",itBig:"الملف أكبر من 50 ميقا.",itUpErr:"ما قدرت أرفع الملف. جربي مرة ثانية.",fileErr:"ما قدرت أفتح الملف.",itBadUrl:"الرابط لازم يبدأ بـ https://",itDup:"هذا الرابط موجود في مكتبتك.",itAdded:t=>`انضاف «${t}» ✓`},
   en:{sub:"Everything you want to learn, in one place",q:"Search your library",prog:(t,d,n)=>`Progress in ${t}: ${d} of ${n}`,open:"Source",file:"Saved copy",
     emptyT:"Nothing here yet",emptyB:"Add items in Supabase or via the seed script.",noMatch:"Nothing matches your search.",
     due:d=>d<0?"Ended":d===0?"Ends today":d===1?"1 day left":`${d} days left`,
@@ -51,7 +51,7 @@ const UI = {
     clear:"Clear filters",clearAll:"Clear search and filters",more:"Read more",less:"Less",stLabel:"Status",
     noMatchB:"Try another word or clear the filters.",
     addItem:"+ Add",itTitle:"Title (required)",itUrl:"Link (https://…)",itSub:"Short description (optional)",itSum:"Summary or note (optional)",itType:"Type",itTab:"Section",
-    itNeed:"Enter a title first.",itBadUrl:"The link must start with https://",itDup:"That link is already in your library.",itAdded:t=>`Added "${t}" ✓`}
+    itNeed:"Enter a title or pick a file.",myFile:"File",itFile:"📎 Upload a file from your device (optional)",itUp:"Uploading…",itBig:"The file is over 50 MB.",itUpErr:"Couldn't upload the file. Try again.",fileErr:"Couldn't open the file.",itBadUrl:"The link must start with https://",itDup:"That link is already in your library.",itAdded:t=>`Added "${t}" ✓`}
 };
 const CAT = {
   ar:{def:"دوبي",ph:"اسأليني عن أي شي في مكتبتك",nameLbl:"اسمها",save:"حفظ",hi:n=>`هلا! أنا ${n}. أقدر أشرح لك أي مصدر، أختبرك، أو أقترح وش تبدين فيه.`,
@@ -72,6 +72,7 @@ let TABS = BASE_TABS.slice();
 try { lang = localStorage.getItem("lib-lang") || "ar"; tab = localStorage.getItem("lib-tab") || "all"; } catch (e) {}
 const U = () => UI[lang], C = () => CAT[lang];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const FILE_PREFIX=(cfg.SUPABASE_URL||"")+"/storage/v1/object/files/", MAX_UP=50*1024*1024;
 const safeUrl = u => /^https?:\/\//i.test(u || "") ? u : "";
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function daysLeft(iso){ if(!iso) return null; const d=new Date(iso+"T23:59:59"); if(isNaN(d)) return null; return Math.ceil((d-new Date())/864e5)-1; }
@@ -88,7 +89,7 @@ function applyLang(){
   $("logout").textContent=u.logout; $("typeLbl").textContent=u.type; $("sortLbl").textContent=u.sort; $("clearF").textContent=u.clear;
   $("addItemBtn").textContent=u.addItem; $("itTitle").placeholder=u.itTitle; $("itUrl").placeholder=u.itUrl; $("itSub").placeholder=u.itSub; $("itSum").placeholder=u.itSum;
   $("itTitle").setAttribute("aria-label",u.itTitle); $("itUrl").setAttribute("aria-label",u.itUrl); $("itSub").setAttribute("aria-label",u.itSub); $("itSum").setAttribute("aria-label",u.itSum);
-  $("itType").setAttribute("aria-label",u.itType); $("itTab").setAttribute("aria-label",u.itTab); $("itSave").textContent=u.add; $("itCancel").textContent=u.cancel;
+  $("itType").setAttribute("aria-label",u.itType); $("itTab").setAttribute("aria-label",u.itTab); $("itSave").textContent=u.add; if(!$("itFile").files.length) $("itFileTxt").textContent=u.itFile; $("itCancel").textContent=u.cancel;
   $("sortSel").innerHTML=Object.entries(u.sorts).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join(""); $("sortSel").value=sortBy;
   paintTheme();
 }
@@ -159,11 +160,11 @@ function render(){
       const ext='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
       return `<article class="card${soon?" due-soon":""}${x.status===2?" is-done":""}">
         <div class="top"><div class="ic" data-t="${esc(x.type)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${t.ic}</svg></div>
-        <div class="tmain"><h2 class="ttl">${url?`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(title)}</a>`:esc(title)}</h2><div class="meta"><span class="tbadge">${esc(t[lang])}</span>${x.sub?`<span>${esc(x.sub)}</span>`:""}${tab==="all"?`<span>${esc(tabName(x.tab))}</span>`:""}</div></div>
+        <div class="tmain"><h2 class="ttl">${url||file?`<a href="${esc(url||file)}" target="_blank" rel="noopener noreferrer">${esc(title)}</a>`:esc(title)}</h2><div class="meta"><span class="tbadge">${esc(t[lang])}</span>${x.sub?`<span>${esc(x.sub)}</span>`:""}${tab==="all"?`<span>${esc(tabName(x.tab))}</span>`:""}</div></div>
         ${d!==null&&x.status!==2?`<span class="duep${d<0?" over":""}">${esc(u.due(d))}</span>`:""}</div>
         ${sum?`<p class="sum${long?" clamp":""}">${esc(sum)}</p>${long?`<button class="more" type="button" aria-expanded="false">${esc(u.more)}</button>`:""}`:""}${x.notes?`<p class="note">${esc(x.notes)}</p>`:""}
-        <div class="foot"><div class="links">${url?`<a class="open" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(u.open)}${ext}</a>`:""}${file?`<a href="${esc(file)}" target="_blank" rel="noopener noreferrer">${esc(u.file)}</a>`:""}</div>
-        <div class="acts"><button class="ask" type="button" data-title="${esc(title)}"><img src="cat/explain.png" alt="" width="20" height="20">${esc(C().askCard)}</button>
+        <div class="foot"><div class="links">${url?`<a class="open" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(u.open)}${ext}</a>`:""}${file?`<a href="${esc(file)}" target="_blank" rel="noopener noreferrer">${esc(FILE_PREFIX&&file.startsWith(FILE_PREFIX)?"📎 "+u.myFile:u.file)}</a>`:""}</div>
+        <div class="acts"><button class="ask" type="button" data-title="${esc(title)}" data-id="${esc(x.id)}"><img src="cat/explain.png" alt="" width="20" height="20">${esc(C().askCard)}</button>
         <label class="stw" data-s="${x.status}"><span class="vh">${esc(u.stLabel)}</span><select class="st" data-id="${esc(x.id)}">${STATUS[lang].map((n,i)=>`<option value="${i}"${i===x.status?" selected":""}>${esc(n)}</option>`).join("")}</select></label></div></div>
       </article>`}).join("");
     if(window.gsap&&!reduce) gsap.from("#grid .card",{y:firstPaint?8:4,opacity:0,duration:.3,stagger:.03,ease:"power2.out",clearProps:"transform,opacity"});
@@ -204,7 +205,16 @@ document.addEventListener("click",async e=>{
   const mo=e.target.closest(".more");
   if(mo){const p=mo.previousElementSibling,open=p.classList.toggle("clamp")===false;mo.setAttribute("aria-expanded",open);mo.textContent=open?U().less:U().more;return}
   const ak=e.target.closest(".ask[data-title]");
-  if(ak){openChat();ask((lang==="ar"?"اشرحي لي هذا المصدر ووش أستفيد منه: ":"Explain this resource and what I get from it: ")+ak.dataset.title)}
+  if(ak){
+    openChat();
+    // her uploaded file: hand it to Dobby (📎) first so the answer is based on its text
+    const it=items.find(x=>x.id===ak.dataset.id), f=it&&it.file_url||"";
+    if(FILE_PREFIX&&f.startsWith(FILE_PREFIX)&&window.LibAttach&&!busy){
+      const path=decodeURIComponent(f.slice(FILE_PREFIX.length));
+      const {data:blob,error}=await sb.storage.from("files").download(path);
+      if(!error&&blob) await LibAttach.addFile(new File([blob],path.split("/").pop().replace(/^u-[a-z0-9]+-/,""),{type:blob.type||"application/pdf"}));
+    }
+    ask((lang==="ar"?"اشرحي لي هذا المصدر ووش أستفيد منه: ":"Explain this resource and what I get from it: ")+ak.dataset.title)}
 });
 $("lang").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem("lib-lang",lang)}catch(_){}applyLang();render();paintCat()});
 $("q").addEventListener("input",render);
@@ -235,6 +245,8 @@ $("addsec").addEventListener("submit",async e=>{
 });
 
 /* ---- add an item to any section (her own links) ---- */
+/* files she uploads live in the private Storage bucket "files"; cards open them with a 10-minute signed URL */
+const typeForFile=f=>/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name)?"pdf":/^video\//.test(f.type)?"video":/\.(epub|mobi)$/i.test(f.name)?"book":"article";
 function itErr(m){ $("itErr").textContent=m; $("itErr").hidden=!m; }
 function openAddItem(open){
   const f=$("additem"), u=U(); f.hidden=!open; $("addItemBtn").setAttribute("aria-expanded",open); itErr("");
@@ -247,24 +259,50 @@ function openAddItem(open){
 }
 $("addItemBtn").addEventListener("click",()=>openAddItem($("additem").hidden));
 $("itCancel").addEventListener("click",()=>openAddItem(false));
+$("itFile").addEventListener("change",()=>{
+  const f=$("itFile").files[0], u=U(); itErr("");
+  $("itFileTxt").textContent=f?`📎 ${f.name} (${(f.size/1048576).toFixed(1)} MB)`:u.itFile;
+  if(!f) return; if(f.size>MAX_UP){itErr(u.itBig);return}
+  if(!$("itTitle").value.trim()) $("itTitle").value=f.name.replace(/\.[^.]+$/,"").replace(/[_]+/g," ");
+  $("itType").value=typeForFile(f);
+});
+document.addEventListener("click",async e=>{
+  const a=e.target.closest&&e.target.closest("a[href]"); if(!a||!FILE_PREFIX||!a.href.startsWith(FILE_PREFIX)) return;
+  e.preventDefault(); const w=window.open("about:blank","_blank");
+  const path=decodeURIComponent(a.href.slice(FILE_PREFIX.length));
+  const {data,error}=await sb.storage.from("files").createSignedUrl(path,600);
+  if(error||!data){ if(w) w.close(); setMsg(U().fileErr); return; }
+  if(w){ w.opener=null; w.location.href=data.signedUrl; } else location.href=data.signedUrl;
+});
 $("itUrl").addEventListener("change",()=>{ const v=$("itUrl").value.trim(); if(/drive\.google\.com|\.pdf(\?|$)/i.test(v)&&$("itType").value==="article") $("itType").value="pdf"; });
 $("additem").addEventListener("submit",async e=>{
   e.preventDefault(); const u=U();
+  const file=$("itFile").files[0];
+  if(file&&!$("itTitle").value.trim()) $("itTitle").value=file.name.replace(/\.[^.]+$/,"");
   const title=$("itTitle").value.trim(), url=$("itUrl").value.trim();
   if(!title){itErr(u.itNeed);return}
+  if(file&&file.size>MAX_UP){itErr(u.itBig);return}
   if(url&&!/^https?:\/\//i.test(url)){itErr(u.itBadUrl);return}
   if(url&&items.some(x=>x.url===url)){itErr(u.itDup);return}
   const row={id:"u-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),title,tab:$("itTab").value,type:$("itType").value,
     url:url||null,sub:$("itSub").value.trim()||null,summary_ar:$("itSum").value.trim()||null,status:0,added:new Date().toISOString().slice(0,10)};
   $("itSave").disabled=true;
   try{
+    if(file){
+      $("itSave").textContent=u.itUp;
+      const safe=file.name.normalize("NFKD").replace(/[^\w.-]+/g,"-").replace(/-+/g,"-").slice(-80)||"file";
+      const path=`${row.added.slice(0,7)}/${row.id}-${safe}`;
+      const up=await sb.storage.from("files").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});
+      if(up.error){ console.error(up.error); itErr(u.itUpErr); return; }
+      row.file_url=FILE_PREFIX+path.split("/").map(encodeURIComponent).join("/");
+    }
     const {data,error}=await sb.from("items").insert(row).select().single(); if(error) throw error;
     items.unshift({...data,status:Number(data.status)||0}); window.__libItems=items;
-    ["itTitle","itUrl","itSub","itSum"].forEach(id=>$(id).value=""); openAddItem(false);
+    ["itTitle","itUrl","itSub","itSum","itFile"].forEach(id=>$(id).value=""); $("itFileTxt").textContent=u.itFile; openAddItem(false);
     tab=row.tab; statusFilter=null; try{localStorage.setItem("lib-tab",tab)}catch(_){}
     render(); const t=$("toast"); t.textContent=u.itAdded(title); t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,3000);
   }catch(err){ console.error(err); itErr(u.saveErr); }
-  finally{ $("itSave").disabled=false; }
+  finally{ $("itSave").disabled=false; $("itSave").textContent=u.add; }
 });
 
 /* ---- auth ---- */

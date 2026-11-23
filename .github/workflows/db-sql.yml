@@ -1,0 +1,29 @@
+name: Run SQL on Supabase
+# Manual only: runs one file from supabase/sql/ on the project through the Supabase Management API.
+# Uses the existing repo secret SUPABASE_ACCESS_TOKEN (same as deploy-functions). Start it from the Actions tab
+# or with: gh api repos/AMV-00/ahlams-library/actions/workflows/db-sql.yml/dispatches -f ref=main -f 'inputs[file]=<name>.sql'
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: "File name inside supabase/sql/"
+        required: true
+concurrency: db-sql
+jobs:
+  run:
+    if: github.repository == 'AMV-00/ahlams-library'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FILE: ${{ inputs.file }}
+        run: |
+          case "$FILE" in *[!A-Za-z0-9._-]*|"") echo "::error::bad file name"; exit 1;; esac
+          test -f "supabase/sql/$FILE" || { echo "::error::supabase/sql/$FILE not found"; exit 1; }
+          jq -n --rawfile q "supabase/sql/$FILE" '{query:$q}' > body.json
+          code=$(curl -sS -o out.json -w '%{http_code}' -X POST "https://api.supabase.com/v1/projects/wznocqfkslmbzuizsiib/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @body.json)
+          echo "HTTP $code"; head -c 2000 out.json; echo
+          [ "$code" -ge 200 ] && [ "$code" -lt 300 ]

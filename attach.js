@@ -210,6 +210,6 @@ function full() {
   const text = docs.map(d => `### ${d.name}\n${d.text}`).join("\n\n");
   return { name: docs.map(d => d.name).join("، "), text: text.slice(0, 60000), partial: text.length > 60000 };
 }
-window.LibAttach = { contextFor, full, fromText, clear() { docs = []; seen.clear(); paintChip(); }, has: () => docs.length > 0, paint, _chunk: chunk };
+window.LibAttach = { contextFor, full, fromText, addFile: onFile, clear() { docs = []; seen.clear(); paintChip(); }, has: () => docs.length > 0, paint, _chunk: chunk };
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
