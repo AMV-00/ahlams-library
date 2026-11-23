@@ -2,7 +2,7 @@
 //   body: { messages, name?, mode?: "chat" | "voice", stream?: boolean }
 // (push-to-talk uses `cat-voice`; `mode: "voice"` is kept for compatibility)
 import { cors, json, userFromJwt } from "../_shared/auth.ts";
-import { buildSystem, getLibrary } from "../_shared/chat.ts";
+import { buildSystem, fitHistory, getLibrary, groqChat } from "../_shared/chat.ts";
 
 const CHAT_MODEL = Deno.env.get("GROQ_MODEL") ?? "openai/gpt-oss-120b";
 const VOICE_MODEL = Deno.env.get("GROQ_VOICE_MODEL") ?? "openai/gpt-oss-120b";
@@ -21,25 +21,25 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return json(req, { error: "bad json" }, 400); }
   const msgs = (body.messages ?? [])
     .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-20).map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
+    .slice(-20).map((m) => ({ role: m.role, content: m.content.slice(0, 6000) }));
   if (!msgs.length) return json(req, { error: "no messages" }, 400);
 
   const voice = body.mode === "voice";
-  const lib = await getLibrary(req, user.sub, voice ? 8000 : 24000);
+  const lib = await getLibrary(req, user.sub, voice ? 8000 : 14000);
   if (lib === null) return json(req, { error: "unauthorized" }, 401);
-  const system = buildSystem({ name: (body.name ?? "").toString().slice(0, 24) || "Dobby", voice, lib });
+  const name = (body.name ?? "").toString().slice(0, 24) || "Dobby";
+  // Normal: library 14k chars + last ~9k chars of chat. Retry (too big / token limit): 4k + ~3k, keeping her last message.
+  const build = (small: boolean) => [
+    { role: "system", content: buildSystem({ name, voice, lib: small ? lib.slice(0, 4000) : lib }) },
+    ...fitHistory(msgs, small ? 3000 : 9000, small ? 1500 : 3000),
+  ];
 
   const stream = !!body.stream;
-  const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: voice ? VOICE_MODEL : CHAT_MODEL, temperature: voice ? 0.5 : 0.6,
-      max_completion_tokens: voice ? 400 : 1500,
-      reasoning_effort: "low", include_reasoning: false, stream,
-      messages: [{ role: "system", content: system }, ...msgs],
-    }),
-  });
+  const r = await groqChat(key, {
+    model: voice ? VOICE_MODEL : CHAT_MODEL, temperature: voice ? 0.5 : 0.6,
+    max_completion_tokens: voice ? 400 : 1500,
+    reasoning_effort: "low", include_reasoning: false, stream,
+  }, build);
   if (!r.ok) {
     // Log status + Groq's error message only (never the key or request headers).
     const t = (await r.text()).slice(0, 400);

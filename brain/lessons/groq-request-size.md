@@ -1,0 +1,4 @@
+# Lesson: one long paste broke every later reply
+What happened (2026-11-23): Ahlam pasted a long message with links, got a long table answer, then every next message returned "ما قدرت أرد الحين". Each request re-sent the whole library (24k chars) + the last 20 messages (up to 4k chars each); Arabic is token-heavy, so requests went past Groq's per-request/TPM limits (413/429/400). Also the model called her "أمل" (transliterated Ahlam).
+Rule: request size is budgeted in `_shared/chat.ts`: `fitHistory` keeps the newest messages within a char budget (long ones cut), `groqChat` retries ONCE smaller on 413/429-token/400. Text chat: library 14k + history 9k chars; voice: library 8k + 7k. The system prompt states her Arabic name أحلام explicitly.
+Not verified against real Groq limits from here (Supabase logs not reachable from the cloud session); confirmed only by her retest.
