@@ -42,10 +42,12 @@ const UI = {
 const CAT = {
   ar:{def:"دوبي",ph:"اسأليني عن أي شي في مكتبتك",nameLbl:"اسمها",save:"حفظ",hi:n=>`هلا! أنا ${n}. أقدر أشرح لك أي مصدر، أختبرك، أو أقترح وش تبدين فيه.`,
     q:["وش أبدأ فيه الحين؟","اختبريني في مهارة FDE","لخصي لي قسم السيكيورتي"],think:"أفكر…",err:"ما قدرت أرد الحين، جربي بعد شوي.",
-    done:n=>`أحسنتي! خلصتي «${n}» 🎉`,listen:"اسمعي"},
+    done:n=>`أحسنتي! خلصتي «${n}» 🎉`,listen:"اسمعي",sub:"مساعدتك في المكتبة",askCard:"اسألي",
+    tools:{newChat:"محادثة جديدة",voice:"اقرئي الردود بصوت",set:"الإعدادات",grow:"تكبير الشاشة",shrink:"تصغير لشريط جانبي",close:"إغلاق",send:"إرسال"}},
   en:{def:"Dobby",ph:"Ask me anything about your library",nameLbl:"Name",save:"Save",hi:n=>`Hi! I'm ${n}. I can explain any resource, quiz you, or suggest what to start next.`,
     q:["What should I start now?","Quiz me on an FDE skill","Summarize my security section"],think:"Thinking…",err:"I couldn't answer right now, try again shortly.",
-    done:n=>`Well done! You finished "${n}" 🎉`,listen:"Listen"}
+    done:n=>`Well done! You finished "${n}" 🎉`,listen:"Listen",sub:"Your library assistant",askCard:"Ask",
+    tools:{newChat:"New chat",voice:"Read replies aloud",set:"Settings",grow:"Full screen",shrink:"Back to side panel",close:"Close",send:"Send"}}
 };
 
 let ttsVoice = "noura";
@@ -113,7 +115,7 @@ function render(){
         <div><h2 class="ttl">${esc(title)}</h2><div class="meta"><span>${esc(t[lang])}</span>${x.sub?`<span>${esc(x.sub)}</span>`:""}${tab==="all"?`<span>${esc(tabName(x.tab))}</span>`:""}</div></div></div>
         ${sum?`<p class="sum">${esc(sum)}</p>`:""}${x.notes?`<p class="note">${esc(x.notes)}</p>`:""}
         <div class="foot"><div class="links">${url?`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(u.open)}</a>`:""}${file?`<a href="${esc(file)}" target="_blank" rel="noopener noreferrer">${esc(u.file)}</a>`:""}${d!==null&&x.status!==2?`<span class="duep">${esc(u.due(d))}</span>`:""}</div>
-        <button class="ask" type="button" data-title="${esc(title)}">🐾</button><button class="st" type="button" data-id="${esc(x.id)}" data-s="${x.status}">${esc(STATUS[lang][x.status]||STATUS[lang][0])}</button></div>
+        <button class="ask" type="button" data-title="${esc(title)}"><img src="cat/explain.png" alt="" width="20" height="20">${esc(C().askCard)}</button><button class="st" type="button" data-id="${esc(x.id)}" data-s="${x.status}">${esc(STATUS[lang][x.status]||STATUS[lang][0])}</button></div>
       </article>`}).join("");
     if(window.gsap&&!reduce) gsap.from("#grid .card",{y:firstPaint?8:4,opacity:0,duration:.3,stagger:.03,ease:"power2.out",clearProps:"transform,opacity"});
     firstPaint=false;
@@ -172,7 +174,7 @@ $("addsec").addEventListener("submit",async e=>{
 });
 
 /* ---- auth ---- */
-function showLogin(msg){ $("app").hidden=true; $("catUi").hidden=true; $("login").hidden=false; $("loginErr").hidden=!msg; $("loginErr").textContent=msg||""; }
+function showLogin(msg){ $("app").hidden=true; $("catUi").hidden=true; document.body.classList.remove("chat-open","chat-full"); $("login").hidden=false; $("loginErr").hidden=!msg; $("loginErr").textContent=msg||""; }
 $("login").addEventListener("submit",async e=>{
   e.preventDefault(); $("loginBtn").disabled=true;
   const {error}=await sb.auth.signInWithPassword({email:$("email").value.trim(),password:$("pass").value});
@@ -194,7 +196,7 @@ function setPose(p,ms){ $("catImg").src="cat/"+p+".png"; $("chatImg").src="cat/"
 function wake(){ if($("catImg").src.includes("sleep")) setPose("happy"); clearTimeout(idleT); idleT=setTimeout(()=>{if(!busy)setPose("sleep")},120000); }
 ["click","keydown","scroll","touchstart"].forEach(ev=>addEventListener(ev,wake,{passive:true}));
 function paintCat(){
-  const t=C(); $("catName").textContent=nm(); $("askIn").placeholder=t.ph; $("nameLbl").textContent=t.nameLbl; $("nameSave").textContent=t.save;
+  const t=C(); $("catName").textContent=nm(); $("catSub").textContent=t.sub; $("askIn").placeholder=t.ph; paintTools(); $("nameLbl").textContent=t.nameLbl; $("nameSave").textContent=t.save;
   $("quick").innerHTML=t.q.map(x=>`<button type="button">${esc(x)}</button>`).join("");
   if(!history.length){ $("msgs").innerHTML=""; addMsg("cat",t.hi(nm()),false); }
   $("voiceBtn").hidden=!("speechSynthesis" in window);
@@ -224,17 +226,41 @@ async function ask(text){
   }catch(e){ try{ if(e&&e.context&&e.context.json) console.error("cat error body:",await e.context.json()); }catch(_){} console.error(e); bubble.dataset.raw=C().err; bubble.textContent=C().err; history.pop(); setPose("happy"); }
   finally{ busy=false; $("msgs").scrollTop=1e9; }
 }
-function openChat(noFocus){ $("chat").hidden=false; paintCat(); if(!noFocus) $("askIn").focus(); }
+/* panel: "dock" = tall side panel (pushes the page on wide screens), "full" = full screen. Phones are always full screen. */
+let chatMode="dock"; try{ if(localStorage.getItem("lib-chat-mode")==="full") chatMode="full"; }catch(_){}
+function paintTools(){
+  const t=C().tools, full=chatMode==="full";
+  [["newChat",t.newChat],["voiceBtn",t.voice],["setBtn",t.set],["sizeBtn",full?t.shrink:t.grow],["closeChat",t.close],["sendBtn",t.send]]
+    .forEach(([id,l])=>{ $(id).title=l; $(id).setAttribute("aria-label",l); });
+  $("sizeBtn").setAttribute("aria-pressed",full);
+}
+function setChatOpen(open){
+  $("chat").hidden=!open;
+  document.body.classList.toggle("chat-open",open);
+  document.body.classList.toggle("chat-full",open&&chatMode==="full");
+}
+function setChatMode(m){ chatMode=m; try{localStorage.setItem("lib-chat-mode",m)}catch(_){} setChatOpen(!$("chat").hidden); paintTools(); $("msgs").scrollTop=1e9; }
+function growAsk(){ const a=$("askIn"); a.style.height="auto"; a.style.height=Math.min(a.scrollHeight,160)+"px"; }
+function openChat(noFocus){ setChatOpen(true); paintCat(); $("msgs").scrollTop=1e9; if(!noFocus) $("askIn").focus(); }
 function onStatus(it){ if(it.status===2){ setPose("celebrate",3000); const t=$("toast"); t.textContent=C().done(it.title); t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,3000); } }
-$("cat").onclick=()=>{ $("chat").hidden?openChat():($("chat").hidden=true); };
-$("closeChat").onclick=()=>{ $("chat").hidden=true; };
-$("setBtn").onclick=()=>{ const f=$("setForm"); f.hidden=!f.hidden; $("nameIn").value=name; if(!f.hidden) $("nameIn").focus(); };
+$("cat").onclick=()=>{ $("chat").hidden?openChat():setChatOpen(false); };
+$("closeChat").onclick=()=>{ setChatOpen(false); $("cat").focus(); };
+$("sizeBtn").onclick=()=>setChatMode(chatMode==="full"?"dock":"full");
+$("newChat").onclick=()=>{ if(busy) return; if(window.LibDobby) LibDobby.stop(); history.length=0; paintCat(); $("askIn").focus(); };
+addEventListener("keydown",e=>{
+  if(e.key!=="Escape"||$("chat").hidden) return;
+  if(!$("setForm").hidden){ $("setForm").hidden=true; $("setBtn").setAttribute("aria-expanded","false"); return; }
+  if(chatMode==="full"&&innerWidth>760) setChatMode("dock"); else { setChatOpen(false); $("cat").focus(); }
+});
+$("setBtn").onclick=()=>{ const f=$("setForm"); f.hidden=!f.hidden; $("setBtn").setAttribute("aria-expanded",!f.hidden); $("nameIn").value=name; if(!f.hidden) $("nameIn").focus(); };
 $("voiceBtn").onclick=()=>{ voice=!voice; $("voiceBtn").setAttribute("aria-pressed",voice); if(!voice) stopSpeaking(); };
-$("setForm").onsubmit=async e=>{ e.preventDefault(); name=$("nameIn").value.trim(); ttsVoice=$("voiceSel").value||"noura"; paintCat(); $("setForm").hidden=true; await sb.from("config").upsert({key:"assistant",value:{name,voice:ttsVoice}}); };
+$("setForm").onsubmit=async e=>{ e.preventDefault(); name=$("nameIn").value.trim(); ttsVoice=$("voiceSel").value||"noura"; paintCat(); $("setForm").hidden=true; $("setBtn").setAttribute("aria-expanded","false"); await sb.from("config").upsert({key:"assistant",value:{name,voice:ttsVoice}}); };
 /* surface used by dobby.js (voice conversation) */
 window.LibApp={ sb, cfg, $, esc, C, nm, lang:()=>lang, history:()=>history, busy:()=>busy, setBusy:v=>{busy=v}, addMsg, setReply, setPose, openChat,
   name:()=>name, ttsVoice:()=>ttsVoice, token:async()=>{const {data}=await sb.auth.getSession();return data.session&&data.session.access_token} };
-$("askForm").onsubmit=e=>{ e.preventDefault(); const v=$("askIn").value; $("askIn").value=""; ask(v); };
+$("askForm").onsubmit=e=>{ e.preventDefault(); const v=$("askIn").value; $("askIn").value=""; growAsk(); ask(v); };
+$("askIn").addEventListener("input",growAsk);
+$("askIn").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); $("askForm").requestSubmit(); } });
 $("quick").onclick=e=>{ const b=e.target.closest("button"); if(b) ask(b.textContent); };
 
 /* ---- boot ---- */

@@ -23,14 +23,16 @@
 
 <div class="wrap" id="app" hidden>
   <header class="top-h">
-    <div><h1 id="h1">Ahlam's Library</h1><p class="sub" id="hsub"></p></div>
+    <div class="brand"><img src="cat/happy.png" alt="" width="44" height="44"><div><h1 id="h1">Ahlam's Library</h1><p class="sub" id="hsub"></p></div></div>
     <div class="hbtns"><button class="ghost" id="theme" type="button"></button><button class="ghost" id="lang" type="button">EN</button><button class="ghost" id="logout" type="button" title="Sign out">⎋</button></div>
   </header>
+  <div class="toolbar">
   <label class="search" for="q">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     <input id="q" type="search" autocomplete="off">
   </label>
   <nav class="tabs" id="tabs" role="tablist"></nav>
+  </div>
   <form class="addsec" id="addsec" hidden>
     <input id="secAr" type="text" maxlength="30" autocomplete="off">
     <input id="secEn" type="text" maxlength="30" autocomplete="off">
@@ -49,17 +51,29 @@
 <div id="catUi" hidden>
   <button class="cat" id="cat" type="button" aria-label="Open assistant"><img id="catImg" src="cat/happy.png" alt=""></button>
   <div class="toast" id="toast" hidden></div>
-  <div class="vstatus" id="vstatus" role="status" aria-live="polite" hidden><i class="dot"></i><div class="vcol"><span id="vtext"></span><small id="vheard" hidden></small></div></div>
-  <section class="chat" id="chat" hidden aria-label="Assistant">
-    <header><img id="chatImg" src="cat/happy.png" alt=""><b id="catName"></b>
-      <button class="ib" id="listenBtn" type="button" aria-pressed="false" title="Tap to talk">🎙</button>
-      <button class="ib" id="voiceBtn" type="button" aria-pressed="false" title="Read replies aloud">🔈</button>
-      <button class="ib" id="setBtn" type="button" title="Settings">⚙</button>
-      <button class="ib" id="closeChat" type="button" title="Close">✕</button></header>
+  <section class="chat" id="chat" hidden aria-label="Assistant" aria-labelledby="catName">
+    <header class="chat-h">
+      <img id="chatImg" src="cat/happy.png" alt="">
+      <div class="who"><b id="catName"></b><small id="catSub"></small></div>
+      <div class="chat-tools">
+        <button class="ib" id="newChat" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="ib" id="voiceBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+        <button class="ib" id="setBtn" type="button" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+        <button class="ib" id="sizeBtn" type="button" aria-pressed="false"><svg class="i-grow" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg><svg class="i-shrink" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg></button>
+        <button class="ib" id="closeChat" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+    </header>
     <form class="settings" id="setForm" hidden><label for="nameIn" id="nameLbl"></label><input id="nameIn" maxlength="24" autocomplete="off"><label for="voiceSel" id="voiceLbl"></label><select id="voiceSel"><option value="noura">Noura</option><option value="lulwa">Lulwa</option><option value="aisha">Aisha</option><option value="fahad">Fahad</option><option value="sultan">Sultan</option><option value="abdullah">Abdullah</option></select><button class="save" type="submit" id="nameSave"></button></form>
     <div class="msgs" id="msgs" aria-live="polite"></div>
-    <div class="quick" id="quick"></div>
-    <form id="askForm"><input id="askIn" autocomplete="off"><button class="save" type="submit">↑</button></form>
+    <div class="chat-foot">
+      <div class="quick" id="quick"></div>
+      <div class="vstatus" id="vstatus" role="status" aria-live="polite" hidden><i class="dot"></i><div class="vcol"><span id="vtext"></span><small id="vheard" hidden></small></div></div>
+      <form id="askForm" class="composer">
+        <textarea id="askIn" rows="1" autocomplete="off" enterkeyhint="send"></textarea>
+        <button class="ib mic" id="listenBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+        <button class="save send" id="sendBtn" type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+      </form>
+    </div>
   </section>
 </div>
 
