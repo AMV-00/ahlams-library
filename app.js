@@ -199,7 +199,7 @@ function paintCat(){
   if(!history.length){ $("msgs").innerHTML=""; addMsg("cat",t.hi(nm()),false); }
   $("voiceBtn").hidden=!("speechSynthesis" in window);
   $("listenBtn").hidden=!(navigator.mediaDevices&&window.MediaRecorder);
-  $("listenBtn").title=lang==="ar"?"اضغطي وتكلمي (أو المسطرة)، واضغطي ثانية للإرسال أو اسكتي ثانية ونص":"Tap and talk (or Space); tap again or pause 1.5 s to send";
+  $("listenBtn").title=lang==="ar"?"اضغطي وسولفي مع دوبي (أو المسطرة). يرد ويرجع يسمعك، واضغطي قبل ما تتكلمين للإنهاء":"Tap and talk (or Space). Dobby answers and listens again; tap before speaking to end";
   $("voiceSel").value=ttsVoice; $("voiceLbl").textContent=lang==="ar"?"الصوت":"Voice";
   if(window.LibDobby) LibDobby.refreshStatus();
 }
@@ -227,7 +227,7 @@ async function ask(text){
 function openChat(noFocus){ $("chat").hidden=false; paintCat(); if(!noFocus) $("askIn").focus(); }
 function onStatus(it){ if(it.status===2){ setPose("celebrate",3000); const t=$("toast"); t.textContent=C().done(it.title); t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,3000); } }
 $("cat").onclick=()=>{ $("chat").hidden?openChat():($("chat").hidden=true); };
-$("closeChat").onclick=()=>{ $("chat").hidden=true; };
+$("closeChat").onclick=()=>{ $("chat").hidden=true; if(window.LibDobby) LibDobby.stop(); };
 $("setBtn").onclick=()=>{ const f=$("setForm"); f.hidden=!f.hidden; $("nameIn").value=name; if(!f.hidden) $("nameIn").focus(); };
 $("voiceBtn").onclick=()=>{ voice=!voice; $("voiceBtn").setAttribute("aria-pressed",voice); if(!voice) stopSpeaking(); };
 $("setForm").onsubmit=async e=>{ e.preventDefault(); name=$("nameIn").value.trim(); ttsVoice=$("voiceSel").value||"noura"; paintCat(); $("setForm").hidden=true; await sb.from("config").upsert({key:"assistant",value:{name,voice:ttsVoice}}); };

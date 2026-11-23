@@ -12,3 +12,8 @@ Revisit if: real median > 2 s -> next levers in order: play TTS WAV progressivel
 - cat-voice strips a leading "دوبي/Dobby" from the transcript, and flags `unclear` (mean avg_logprob < -1.0, or compression_ratio > 2.6, or only the name): no model call, the page says "ما فهمت عليك" and shows what it heard.
 - Voice system prompt: never start with your name; if unclear, ask to repeat instead of repeating the last question. Client also strips a leading "Dobby:" label.
 - Client: start "ding" when the mic is really recording (she was likely talking before the recorder started, losing the first word); VAD ignores the first 220 ms; mic stays warm 60 s; opus 64 kbps.
+
+## Update 2026-11-23 (2): conversation mode + smarter voice replies
+Ahlam: "أسأل ويقفل على طول… أبي المحادثة نفس مستوى GPT" and Dobby must keep his library role.
+- Conversation mode: after Dobby finishes speaking the mic reopens by itself (ding). Ends on: tap 🎙 before speaking, 7 s with no speech, closing the chat (now also stops Dobby), page hidden, or an error. Unclear transcript -> asks to repeat and listens again.
+- Voice model default gpt-oss-20b -> gpt-oss-120b (same as text chat), max tokens 300 -> 700, prompt allows 2-5 sentences, follow-up question, general questions, memory of the conversation, while keeping the library/quiz/plan role. Needs Edge Function deploy. Watch first-token latency (reasoning_effort low).
