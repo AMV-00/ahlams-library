@@ -22,3 +22,4 @@ Open: real call to `cat` after the model fix must be confirmed with scripts/test
 - [Decision: dark depth](decisions/2026-11-23-dark-depth.md) — tonal steps, gradients, elevation
 - [Lesson: Groq request size + her Arabic name](lessons/groq-request-size.md)
 - [Decision: 📎 attachments + honest abilities](decisions/2026-11-23-dobby-attachments.md)
+- [Decision: chat history in config table](decisions/2026-11-23-chat-history.md)
