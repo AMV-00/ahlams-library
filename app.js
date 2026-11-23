@@ -36,7 +36,9 @@ const UI = {
     sorts:{due:"الأقرب موعد أول",new:"الأحدث",title:"حسب الاسم"},
     results:n=>n===0?"ولا نتيجة":n===1?"نتيجة وحدة":n===2?"نتيجتين":n<=10?`${n} نتائج`:`${n} نتيجة`,
     clear:"مسح الفلاتر",clearAll:"امسحي البحث والفلاتر",more:"اقرئي المزيد",less:"أقل",stLabel:"الحالة",
-    noMatchB:"جربي كلمة ثانية أو امسحي الفلاتر."},
+    noMatchB:"جربي كلمة ثانية أو امسحي الفلاتر.",
+    addItem:"+ إضافة",itTitle:"العنوان (مطلوب)",itUrl:"الرابط (https://…)",itSub:"وصف قصير (اختياري)",itSum:"ملخص أو ملاحظة (اختياري)",itType:"النوع",itTab:"القسم",
+    itNeed:"اكتبي العنوان أول.",itBadUrl:"الرابط لازم يبدأ بـ https://",itDup:"هذا الرابط موجود في مكتبتك.",itAdded:t=>`انضاف «${t}» ✓`},
   en:{sub:"Everything you want to learn, in one place",q:"Search your library",prog:(t,d,n)=>`Progress in ${t}: ${d} of ${n}`,open:"Source",file:"Saved copy",
     emptyT:"Nothing here yet",emptyB:"Add items in Supabase or via the seed script.",noMatch:"Nothing matches your search.",
     due:d=>d<0?"Ended":d===0?"Ends today":d===1?"1 day left":`${d} days left`,
@@ -47,7 +49,9 @@ const UI = {
     sorts:{due:"Deadline first",new:"Newest",title:"By name"},
     results:n=>n===1?"1 result":`${n} results`,
     clear:"Clear filters",clearAll:"Clear search and filters",more:"Read more",less:"Less",stLabel:"Status",
-    noMatchB:"Try another word or clear the filters."}
+    noMatchB:"Try another word or clear the filters.",
+    addItem:"+ Add",itTitle:"Title (required)",itUrl:"Link (https://…)",itSub:"Short description (optional)",itSum:"Summary or note (optional)",itType:"Type",itTab:"Section",
+    itNeed:"Enter a title first.",itBadUrl:"The link must start with https://",itDup:"That link is already in your library.",itAdded:t=>`Added "${t}" ✓`}
 };
 const CAT = {
   ar:{def:"دوبي",ph:"اسأليني عن أي شي في مكتبتك",nameLbl:"اسمها",save:"حفظ",hi:n=>`هلا! أنا ${n}. أقدر أشرح لك أي مصدر، أختبرك، أو أقترح وش تبدين فيه.`,
@@ -82,6 +86,9 @@ function applyLang(){
   $("secAr").placeholder=u.secName; $("secEn").placeholder=u.secEn; $("secSave").textContent=u.add; $("secCancel").textContent=u.cancel;
   $("tabs").setAttribute("aria-label",lang==="ar"?"الأقسام":"Sections");
   $("logout").textContent=u.logout; $("typeLbl").textContent=u.type; $("sortLbl").textContent=u.sort; $("clearF").textContent=u.clear;
+  $("addItemBtn").textContent=u.addItem; $("itTitle").placeholder=u.itTitle; $("itUrl").placeholder=u.itUrl; $("itSub").placeholder=u.itSub; $("itSum").placeholder=u.itSum;
+  $("itTitle").setAttribute("aria-label",u.itTitle); $("itUrl").setAttribute("aria-label",u.itUrl); $("itSub").setAttribute("aria-label",u.itSub); $("itSum").setAttribute("aria-label",u.itSum);
+  $("itType").setAttribute("aria-label",u.itType); $("itTab").setAttribute("aria-label",u.itTab); $("itSave").textContent=u.add; $("itCancel").textContent=u.cancel;
   $("sortSel").innerHTML=Object.entries(u.sorts).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join(""); $("sortSel").value=sortBy;
   paintTheme();
 }
@@ -227,6 +234,39 @@ $("addsec").addEventListener("submit",async e=>{
   catch(_){secErr(u.saveErr)} finally{$("secSave").disabled=false}
 });
 
+/* ---- add an item to any section (her own links) ---- */
+function itErr(m){ $("itErr").textContent=m; $("itErr").hidden=!m; }
+function openAddItem(open){
+  const f=$("additem"), u=U(); f.hidden=!open; $("addItemBtn").setAttribute("aria-expanded",open); itErr("");
+  if(!open) return;
+  $("itType").innerHTML=Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${esc(v[lang])}</option>`).join("");
+  $("itType").value="article";
+  $("itTab").innerHTML=TABS.filter(t=>t.id!=="all").map(t=>`<option value="${esc(t.id)}">${esc(t[lang])}</option>`).join("");
+  $("itTab").value=tab!=="all"?tab:"aws";
+  $("itTitle").focus();
+}
+$("addItemBtn").addEventListener("click",()=>openAddItem($("additem").hidden));
+$("itCancel").addEventListener("click",()=>openAddItem(false));
+$("itUrl").addEventListener("change",()=>{ const v=$("itUrl").value.trim(); if(/drive\.google\.com|\.pdf(\?|$)/i.test(v)&&$("itType").value==="article") $("itType").value="pdf"; });
+$("additem").addEventListener("submit",async e=>{
+  e.preventDefault(); const u=U();
+  const title=$("itTitle").value.trim(), url=$("itUrl").value.trim();
+  if(!title){itErr(u.itNeed);return}
+  if(url&&!/^https?:\/\//i.test(url)){itErr(u.itBadUrl);return}
+  if(url&&items.some(x=>x.url===url)){itErr(u.itDup);return}
+  const row={id:"u-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),title,tab:$("itTab").value,type:$("itType").value,
+    url:url||null,sub:$("itSub").value.trim()||null,summary_ar:$("itSum").value.trim()||null,status:0,added:new Date().toISOString().slice(0,10)};
+  $("itSave").disabled=true;
+  try{
+    const {data,error}=await sb.from("items").insert(row).select().single(); if(error) throw error;
+    items.unshift({...data,status:Number(data.status)||0}); window.__libItems=items;
+    ["itTitle","itUrl","itSub","itSum"].forEach(id=>$(id).value=""); openAddItem(false);
+    tab=row.tab; statusFilter=null; try{localStorage.setItem("lib-tab",tab)}catch(_){}
+    render(); const t=$("toast"); t.textContent=u.itAdded(title); t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,3000);
+  }catch(err){ console.error(err); itErr(u.saveErr); }
+  finally{ $("itSave").disabled=false; }
+});
+
 /* ---- auth ---- */
 function showLogin(msg){ $("app").hidden=true; $("catUi").hidden=true; document.body.classList.remove("chat-open","chat-full"); $("login").hidden=false; $("loginErr").hidden=!msg; $("loginErr").textContent=msg||""; }
 $("login").addEventListener("submit",async e=>{
@@ -260,6 +300,7 @@ function paintCat(){
   if(window.LibDobby) LibDobby.refreshStatus();
   if(window.LibAttach) LibAttach.paint();
   if(window.LibChats) LibChats.paint();
+  if(window.LibClf) LibClf.paint();
 }
 function addMsg(who,text,keep=true){
   const d=document.createElement("div"); d.className="m "+(who==="me"?"me":"cat-m");
@@ -278,7 +319,8 @@ async function ask(text){
   try{
     if(window.LibAttach){ bubble.textContent=C().think; await LibAttach.fromText(text); $("msgs").appendChild(bubble.closest(".m")); }
     const doc=window.LibAttach?LibAttach.contextFor(text):null;
-    const {data,error}=await sb.functions.invoke("cat",{body:{messages:history,name:name,doc}});
+    const study=window.LibClf&&LibClf.study(text);
+    const {data,error}=await sb.functions.invoke("cat",{body:{messages:history,name:name,doc,...(study?{study:"clf",progress:LibClf.progress()}:{})}});
     if(error||!data||!data.text) throw (error||new Error("empty"));
     setReply(bubble,data.text); history.push({role:"assistant",content:data.text}); setPose("explain",4000); if(voice) speak(data.text);
   }catch(e){ try{ if(e&&e.context&&e.context.json) console.error("cat error body:",await e.context.json()); }catch(_){} console.error(e); bubble.dataset.raw=C().err; bubble.textContent=C().err; history.pop(); setPose("happy"); }
@@ -313,7 +355,7 @@ document.addEventListener("click",e=>{
   closeChat();
 });
 $("sizeBtn").onclick=()=>setChatMode(chatMode==="full"?"dock":"full");
-$("newChat").onclick=()=>{ if(busy) return; if(window.LibDobby) LibDobby.stop(); if(window.LibAttach) LibAttach.clear(); if(window.LibChats) LibChats.reset(); history.length=0; paintCat(); $("askIn").focus(); };
+$("newChat").onclick=()=>{ if(busy) return; if(window.LibDobby) LibDobby.stop(); if(window.LibAttach) LibAttach.clear(); if(window.LibChats) LibChats.reset(); if(window.LibClf) LibClf.reset(); history.length=0; paintCat(); $("askIn").focus(); };
 addEventListener("keydown",e=>{
   if(e.key!=="Escape"||$("chat").hidden) return;
   if(!$("setForm").hidden){ $("setForm").hidden=true; $("setBtn").setAttribute("aria-expanded","false"); return; }
@@ -323,7 +365,7 @@ $("setBtn").onclick=()=>{ const f=$("setForm"); f.hidden=!f.hidden; $("setBtn").
 $("voiceBtn").onclick=()=>{ voice=!voice; $("voiceBtn").setAttribute("aria-pressed",voice); if(!voice) stopSpeaking(); };
 $("setForm").onsubmit=async e=>{ e.preventDefault(); name=$("nameIn").value.trim(); ttsVoice=$("voiceSel").value||"noura"; paintCat(); $("setForm").hidden=true; $("setBtn").setAttribute("aria-expanded","false"); await sb.from("config").upsert({key:"assistant",value:{name,voice:ttsVoice}}); };
 /* surface used by dobby.js (voice conversation) */
-window.LibApp={ sb, cfg, $, esc, C, nm, lang:()=>lang, history:()=>history, busy:()=>busy, setBusy:v=>{busy=v}, addMsg, setReply, setPose, openChat,
+window.LibApp={ sb, cfg, $, esc, C, nm, lang:()=>lang, history:()=>history, busy:()=>busy, setBusy:v=>{busy=v}, addMsg, setReply, setPose, openChat, ask,
   name:()=>name, ttsVoice:()=>ttsVoice, token:async()=>{const {data}=await sb.auth.getSession();return data.session&&data.session.access_token} };
 $("askForm").onsubmit=e=>{ e.preventDefault(); if(window.LibChats) LibChats.hideList(); const v=$("askIn").value; $("askIn").value=""; growAsk(); ask(v); };
 $("askIn").addEventListener("input",growAsk);

@@ -41,6 +41,17 @@
     <button class="ghost" type="button" id="secCancel"></button>
     <p class="err" id="secErr" hidden></p>
   </form>
+  <form class="addsec additem" id="additem" hidden>
+    <input id="itTitle" type="text" maxlength="200" autocomplete="off" required>
+    <input id="itUrl" type="url" maxlength="2000" autocomplete="off" dir="ltr" inputmode="url">
+    <select id="itType"></select>
+    <select id="itTab"></select>
+    <input id="itSub" type="text" maxlength="120" autocomplete="off">
+    <textarea id="itSum" rows="2" maxlength="1500"></textarea>
+    <button class="save" type="submit" id="itSave"></button>
+    <button class="ghost" type="button" id="itCancel"></button>
+    <p class="err" id="itErr" hidden></p>
+  </form>
   <section class="recs" id="recs" hidden aria-label="Recommendations"></section>
   <section class="filters" aria-label="Filters">
     <div class="frow">
@@ -48,6 +59,7 @@
       <div class="fsel">
         <label class="sel"><span class="vh" id="typeLbl"></span><select id="typeSel" aria-labelledby="typeLbl"></select></label>
         <label class="sel"><span class="vh" id="sortLbl"></span><select id="sortSel" aria-labelledby="sortLbl"></select></label>
+        <button class="save addbtn" type="button" id="addItemBtn" aria-expanded="false"></button>
       </div>
     </div>
     <div class="frow2" aria-live="polite">
@@ -79,6 +91,7 @@
     </header>
     <form class="settings" id="setForm" hidden><label for="nameIn" id="nameLbl"></label><input id="nameIn" maxlength="24" autocomplete="off"><label for="voiceSel" id="voiceLbl"></label><select id="voiceSel"><option value="noura">Noura</option><option value="lulwa">Lulwa</option><option value="aisha">Aisha</option><option value="fahad">Fahad</option><option value="sultan">Sultan</option><option value="abdullah">Abdullah</option></select><button class="save" type="submit" id="nameSave"></button></form>
     <div class="chat-list" id="chatList" hidden></div>
+    <div class="chat-list clf" id="clfBox" hidden aria-label="CLF-C02"></div>
     <div class="msgs" id="msgs" aria-live="polite"></div>
     <div class="chat-foot">
       <div class="quick" id="quick"></div>
@@ -105,6 +118,7 @@
 <script src="app.js"></script>
 <script src="attach.js"></script>
 <script src="chats.js"></script>
+<script src="clf.js"></script>
 <script src="cat-trail.js"></script>
 </body>
 </html>

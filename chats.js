@@ -28,6 +28,7 @@ function fmt(iso) {
   return d.toLocaleDateString(A().lang() === "ar" ? "ar-SA" : "en-GB", { day: "numeric", month: "short" });
 }
 async function showList() {
+  if (window.LibClf) LibClf.hide();
   const box = $("chatList"); box.innerHTML = ""; box.hidden = false; $("msgs").hidden = true; $("histBtn").setAttribute("aria-expanded", "true");
   const { data, error } = await A().sb.from("config").select("key,value").like("key", "chat:%");
   if (error) { box.textContent = L().err; return; }
