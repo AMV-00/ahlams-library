@@ -103,8 +103,18 @@ function visible(){
   const q=$("q").value.trim().toLowerCase();
   return items.filter(x=>(tab==="all"||x.tab===tab)&&(!q||[x.title,x.title_en,x.summary_ar,x.summary_en,x.sub,x.notes,TYPES[x.type]?.ar,TYPES[x.type]?.en].join(" ").toLowerCase().includes(q)));
 }
+function paintRecs(){
+  if(window.LibRecs&&sb) LibRecs.paint({items,lang,tab,tabName,esc,safeUrl,TYPES,sb,
+    onStart:it=>setStatus(it,1),
+    onAsk:t=>{openChat();ask((lang==="ar"?"ليش تنصحيني أبدأ في هذا، ووش أول خطوة؟ ":"Why do you suggest this, and what is my first step? ")+t)}});
+}
+async function setStatus(it,next){
+  const prev=it.status; it.status=next; render(); onStatus(it);
+  const {error}=await sb.from("items").update({status:it.status,updated_at:new Date().toISOString()}).eq("id",it.id);
+  if(error){it.status=prev;render();setMsg(U().saveErr)} else { it.updated_at=new Date().toISOString(); setMsg(""); }
+}
 function render(){
-  const u=U();
+  const u=U(); paintRecs();
   $("tabs").innerHTML=TABS.map(t=>{const n=t.id==="all"?items.length:items.filter(x=>x.tab===t.id).length;return `<button class="tab" role="tab" type="button" data-tab="${esc(t.id)}" aria-selected="${t.id===tab}">${esc(t[lang])}<span class="n">${n}</span></button>`}).join("")+`<button class="tab plus" type="button" id="plus" aria-label="${esc(u.addSec)}" title="${esc(u.addSec)}">+</button>`;
   const base=visible(), done=base.filter(x=>x.status===2).length;
   const isSoon=x=>{const d=daysLeft(x.due);return d!==null&&d>=0&&d<=10&&x.status!==2};
@@ -157,7 +167,8 @@ function render(){
 async function loadAll(){
   const [it,cf]=await Promise.all([
     sb.from("items").select("*").order("added",{ascending:false}).limit(1000),
-    sb.from("config").select("key,value")
+    sb.from("config").select("key,value"),
+    window.LibRecs?LibRecs.load(sb):null
   ]);
   if(it.error||cf.error) throw (it.error||cf.error);
   items=it.data.map(r=>({...r,status:Number(r.status)||0}));
@@ -193,9 +204,7 @@ $("q").addEventListener("input",render);
 document.addEventListener("change",async e=>{
   const st=e.target.closest&&e.target.closest("select.st"); if(!st) return;
   const it=items.find(x=>x.id===st.dataset.id); if(!it) return;
-  const prev=it.status; it.status=+st.value; render(); onStatus(it);
-  const {error}=await sb.from("items").update({status:it.status,updated_at:new Date().toISOString()}).eq("id",it.id);
-  if(error){it.status=prev;render();setMsg(U().saveErr)} else setMsg("");
+  setStatus(it,+st.value);
 });
 $("typeSel").addEventListener("change",()=>{typeFilter=$("typeSel").value;render()});
 $("sortSel").addEventListener("change",()=>{sortBy=$("sortSel").value;try{localStorage.setItem("lib-sort",sortBy)}catch(_){}render()});

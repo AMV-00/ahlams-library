@@ -17,3 +17,4 @@ Open: real call to `cat` after the model fix must be confirmed with scripts/test
 - [Decision: inbox/ + Action upload](decisions/2026-11-23-inbox-action.md) (real run waits for SUPABASE_SECRET_KEY secret)
 - [Decision: Dobby panel redesign](decisions/2026-11-23-dobby-panel.md) — side panel / full screen; voice logic untouched
 - [Decision: UX pass](decisions/2026-11-23-ux-pass.md) — filters panel, status select, card layout, empty states
+- [Decision: recommendations «لك الحين»](decisions/2026-11-23-recommendations.md) — recs.js + _shared/recs.ts (keep in sync); stubbed e2e OK
