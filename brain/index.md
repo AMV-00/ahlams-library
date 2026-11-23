@@ -16,3 +16,4 @@ Open: real call to `cat` after the model fix must be confirmed with scripts/test
 - [Decision: tap-to-talk + 1.5 s silence stop](decisions/2026-11-23-tap-to-talk.md) — stubbed e2e OK; real latency: run `npm run test-voice`, or LibDobby.times() in the page console
 - [Decision: inbox/ + Action upload](decisions/2026-11-23-inbox-action.md) (real run waits for SUPABASE_SECRET_KEY secret)
 - [Decision: Dobby panel redesign](decisions/2026-11-23-dobby-panel.md) — side panel / full screen; voice logic untouched
+- [Decision: UX pass](decisions/2026-11-23-ux-pass.md) — filters panel, status select, card layout, empty states

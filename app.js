@@ -31,13 +31,23 @@ const UI = {
     due:d=>d<0?"انتهى":d===0?"ينتهي اليوم":d===1?"باقي يوم":d===2?"باقي يومين":d<=10?`باقي ${d} أيام`:`باقي ${d} يوم`,
     loading:"جاري التحميل…",offline:"ما قدرت أوصل للبيانات.",notConfigured:"أكملي config.js (SUPABASE_URL و SUPABASE_ANON_KEY).",saveErr:"ما انحفظ التغيير. جربي مرة ثانية.",lang:"EN",
     addSec:"إضافة قسم",secName:"اسم القسم",secEn:"English name (optional)",add:"أضف",cancel:"إلغاء",needName:"اكتبي اسم القسم أول.",dup:"هذا القسم موجود.",delSec:"حذف هذا القسم الفاضي",
-    loginErr:"الإيميل أو كلمة السر غلط."},
+    loginErr:"الإيميل أو كلمة السر غلط.",logout:"خروج",
+    allSt:"الكل",soon:"ينتهي قريب",allTypes:"كل الأنواع",type:"النوع",sort:"الترتيب",
+    sorts:{due:"الأقرب موعد أول",new:"الأحدث",title:"حسب الاسم"},
+    results:n=>n===0?"ولا نتيجة":n===1?"نتيجة وحدة":n===2?"نتيجتين":n<=10?`${n} نتائج`:`${n} نتيجة`,
+    clear:"مسح الفلاتر",clearAll:"امسحي البحث والفلاتر",more:"اقرئي المزيد",less:"أقل",stLabel:"الحالة",
+    noMatchB:"جربي كلمة ثانية أو امسحي الفلاتر."},
   en:{sub:"Everything you want to learn, in one place",q:"Search your library",prog:(t,d,n)=>`Progress in ${t}: ${d} of ${n}`,open:"Source",file:"Saved copy",
     emptyT:"Nothing here yet",emptyB:"Add items in Supabase or via the seed script.",noMatch:"Nothing matches your search.",
     due:d=>d<0?"Ended":d===0?"Ends today":d===1?"1 day left":`${d} days left`,
     loading:"Loading…",offline:"Couldn't reach the data.",notConfigured:"Fill in config.js (SUPABASE_URL and SUPABASE_ANON_KEY).",saveErr:"Change not saved. Try again.",lang:"ع",
     addSec:"Add section",secName:"Section name (Arabic)",secEn:"English name (optional)",add:"Add",cancel:"Cancel",needName:"Enter a section name first.",dup:"That section already exists.",delSec:"Delete this empty section",
-    loginErr:"Wrong email or password."}
+    loginErr:"Wrong email or password.",logout:"Sign out",
+    allSt:"All",soon:"Ending soon",allTypes:"All types",type:"Type",sort:"Sort",
+    sorts:{due:"Deadline first",new:"Newest",title:"By name"},
+    results:n=>n===1?"1 result":`${n} results`,
+    clear:"Clear filters",clearAll:"Clear search and filters",more:"Read more",less:"Less",stLabel:"Status",
+    noMatchB:"Try another word or clear the filters."}
 };
 const CAT = {
   ar:{def:"دوبي",ph:"اسأليني عن أي شي في مكتبتك",nameLbl:"اسمها",save:"حفظ",hi:n=>`هلا! أنا ${n}. أقدر أشرح لك أي مصدر، أختبرك، أو أقترح وش تبدين فيه.`,
@@ -51,6 +61,8 @@ const CAT = {
 };
 
 let ttsVoice = "noura";
+let typeFilter = "", soonOnly = false, sortBy = "due";
+try { sortBy = localStorage.getItem("lib-sort") || "due"; } catch (e) {}
 let lang = "ar", tab = "all", statusFilter = null, items = [], custom = [], firstPaint = true, name = "";
 let TABS = BASE_TABS.slice();
 try { lang = localStorage.getItem("lib-lang") || "ar"; tab = localStorage.getItem("lib-tab") || "all"; } catch (e) {}
@@ -69,6 +81,8 @@ function applyLang(){
   $("hsub").textContent=u.sub; $("q").placeholder=u.q; $("lang").textContent=u.lang;
   $("secAr").placeholder=u.secName; $("secEn").placeholder=u.secEn; $("secSave").textContent=u.add; $("secCancel").textContent=u.cancel;
   $("tabs").setAttribute("aria-label",lang==="ar"?"الأقسام":"Sections");
+  $("logout").textContent=u.logout; $("typeLbl").textContent=u.type; $("sortLbl").textContent=u.sort; $("clearF").textContent=u.clear;
+  $("sortSel").innerHTML=Object.entries(u.sorts).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join(""); $("sortSel").value=sortBy;
   paintTheme();
 }
 /* theme: dark (default) / light, remembered */
@@ -93,29 +107,46 @@ function render(){
   const u=U();
   $("tabs").innerHTML=TABS.map(t=>{const n=t.id==="all"?items.length:items.filter(x=>x.tab===t.id).length;return `<button class="tab" role="tab" type="button" data-tab="${esc(t.id)}" aria-selected="${t.id===tab}">${esc(t[lang])}<span class="n">${n}</span></button>`}).join("")+`<button class="tab plus" type="button" id="plus" aria-label="${esc(u.addSec)}" title="${esc(u.addSec)}">+</button>`;
   const base=visible(), done=base.filter(x=>x.status===2).length;
+  const isSoon=x=>{const d=daysLeft(x.due);return d!==null&&d>=0&&d<=10&&x.status!==2};
   $("plabel").textContent=u.prog(tabName(tab),done,base.length);
   $("pbar").style.width=(base.length?Math.round(done/base.length*100):0)+"%";
-  $("counts").innerHTML=[0,1,2].map(s=>`<button class="chip" type="button" data-sf="${s}" aria-pressed="${statusFilter===s}">${STATUS[lang][s]} <b>${base.filter(x=>x.status===s).length}</b></button>`).join("");
-  const list=base.filter(x=>statusFilter===null||x.status===statusFilter).sort((a,b)=>{
+  const nSoon=base.filter(isSoon).length; if(!nSoon) soonOnly=false;
+  $("counts").innerHTML=`<button class="chip" type="button" data-sf="" aria-pressed="${statusFilter===null}">${esc(u.allSt)} <b>${base.length}</b></button>`
+    +[0,1,2].map(s=>`<button class="chip" type="button" data-sf="${s}" aria-pressed="${statusFilter===s}">${STATUS[lang][s]} <b>${base.filter(x=>x.status===s).length}</b></button>`).join("")
+    +(nSoon?`<button class="chip soon" type="button" id="soonBtn" aria-pressed="${soonOnly}">${esc(u.soon)} <b>${nSoon}</b></button>`:"");
+  const types=[...new Set(base.map(x=>TYPES[x.type]?x.type:"article"))];
+  if(typeFilter&&!types.includes(typeFilter)) typeFilter="";
+  $("typeSel").innerHTML=`<option value="">${esc(u.allTypes)}</option>`+types.map(k=>`<option value="${k}">${esc(TYPES[k][lang])} (${base.filter(x=>(TYPES[x.type]?x.type:"article")===k).length})</option>`).join("");
+  $("typeSel").value=typeFilter;
+  const list=base.filter(x=>(statusFilter===null||x.status===statusFilter)&&(!typeFilter||(TYPES[x.type]?x.type:"article")===typeFilter)&&(!soonOnly||isSoon(x))).sort((a,b)=>{
+    if(sortBy==="title") return String(a.title).localeCompare(String(b.title),lang);
+    if(sortBy==="new") return String(b.added||"").localeCompare(String(a.added||""));
     const da=daysLeft(a.due),db=daysLeft(b.due),ua=da!==null&&da>=0&&a.status!==2,ub=db!==null&&db>=0&&b.status!==2;
     if(ua!==ub) return ua?-1:1; if(ua&&ub) return da-db; return String(b.added||"").localeCompare(String(a.added||""));
   });
+  const active=!!($("q").value.trim()||statusFilter!==null||typeFilter||soonOnly);
+  $("rcount").textContent=u.results(list.length); $("clearF").hidden=!active;
   const cur=TABS.find(t=>t.id===tab);
   const delBtn=cur&&cur.custom&&!items.some(x=>x.tab===tab)?`<button class="delsec" type="button" id="delsec">${esc(u.delSec)}</button>`:"";
   if(!list.length){
-    const filtered=items.length&&($("q").value||statusFilter!==null);
-    $("grid").innerHTML=delBtn+(filtered?`<div class="empty">${esc(u.noMatch)}</div>`:`<div class="empty"><b>${esc(u.emptyT)}</b>${esc(u.emptyB)}</div>`);
+    const filtered=items.length&&active;
+    $("grid").innerHTML=delBtn+(filtered
+      ?`<div class="empty"><img src="cat/think.png" alt=""><b>${esc(u.noMatch)}</b><span>${esc(u.noMatchB)}</span><button class="save" type="button" id="clearAll">${esc(u.clearAll)}</button></div>`
+      :`<div class="empty"><img src="cat/sleep.png" alt=""><b>${esc(u.emptyT)}</b><span>${esc(u.emptyB)}</span></div>`);
   }else{
     $("grid").innerHTML=list.map(x=>{
-      const t=TYPES[x.type]||TYPES.article, d=daysLeft(x.due), soon=d!==null&&d>=0&&d<=10&&x.status!==2;
+      const t=TYPES[x.type]||TYPES.article, d=daysLeft(x.due), soon=isSoon(x);
       const title=lang==="en"&&x.title_en?x.title_en:x.title, sum=lang==="en"&&x.summary_en?x.summary_en:x.summary_ar;
-      const url=safeUrl(x.url), file=safeUrl(x.file_url);
-      return `<article class="card${soon?" due-soon":""}">
-        <div class="top"><div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${t.ic}</svg></div>
-        <div><h2 class="ttl">${esc(title)}</h2><div class="meta"><span>${esc(t[lang])}</span>${x.sub?`<span>${esc(x.sub)}</span>`:""}${tab==="all"?`<span>${esc(tabName(x.tab))}</span>`:""}</div></div></div>
-        ${sum?`<p class="sum">${esc(sum)}</p>`:""}${x.notes?`<p class="note">${esc(x.notes)}</p>`:""}
-        <div class="foot"><div class="links">${url?`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(u.open)}</a>`:""}${file?`<a href="${esc(file)}" target="_blank" rel="noopener noreferrer">${esc(u.file)}</a>`:""}${d!==null&&x.status!==2?`<span class="duep">${esc(u.due(d))}</span>`:""}</div>
-        <button class="ask" type="button" data-title="${esc(title)}"><img src="cat/explain.png" alt="" width="20" height="20">${esc(C().askCard)}</button><button class="st" type="button" data-id="${esc(x.id)}" data-s="${x.status}">${esc(STATUS[lang][x.status]||STATUS[lang][0])}</button></div>
+      const url=safeUrl(x.url), file=safeUrl(x.file_url), long=(sum||"").length>170;
+      const ext='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+      return `<article class="card${soon?" due-soon":""}${x.status===2?" is-done":""}">
+        <div class="top"><div class="ic" data-t="${esc(x.type)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${t.ic}</svg></div>
+        <div class="tmain"><h2 class="ttl">${url?`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(title)}</a>`:esc(title)}</h2><div class="meta"><span class="tbadge">${esc(t[lang])}</span>${x.sub?`<span>${esc(x.sub)}</span>`:""}${tab==="all"?`<span>${esc(tabName(x.tab))}</span>`:""}</div></div>
+        ${d!==null&&x.status!==2?`<span class="duep${d<0?" over":""}">${esc(u.due(d))}</span>`:""}</div>
+        ${sum?`<p class="sum${long?" clamp":""}">${esc(sum)}</p>${long?`<button class="more" type="button" aria-expanded="false">${esc(u.more)}</button>`:""}`:""}${x.notes?`<p class="note">${esc(x.notes)}</p>`:""}
+        <div class="foot"><div class="links">${url?`<a class="open" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(u.open)}${ext}</a>`:""}${file?`<a href="${esc(file)}" target="_blank" rel="noopener noreferrer">${esc(u.file)}</a>`:""}</div>
+        <div class="acts"><button class="ask" type="button" data-title="${esc(title)}"><img src="cat/explain.png" alt="" width="20" height="20">${esc(C().askCard)}</button>
+        <label class="stw" data-s="${x.status}"><span class="vh">${esc(u.stLabel)}</span><select class="st" data-id="${esc(x.id)}">${STATUS[lang].map((n,i)=>`<option value="${i}"${i===x.status?" selected":""}>${esc(n)}</option>`).join("")}</select></label></div></div>
       </article>`}).join("");
     if(window.gsap&&!reduce) gsap.from("#grid .card",{y:firstPaint?8:4,opacity:0,duration:.3,stagger:.03,ease:"power2.out",clearProps:"transform,opacity"});
     firstPaint=false;
@@ -148,20 +179,33 @@ document.addEventListener("click",async e=>{
   const tb=e.target.closest(".tab[data-tab]");
   if(tb){tab=tb.dataset.tab;statusFilter=null;try{localStorage.setItem("lib-tab",tab)}catch(_){}render();return}
   const ch=e.target.closest(".chip");
-  if(ch){const s=+ch.dataset.sf;statusFilter=statusFilter===s?null:s;render();return}
-  const st=e.target.closest(".st");
-  if(st){
-    const it=items.find(x=>x.id===st.dataset.id); if(!it) return;
-    const prev=it.status; it.status=(prev+1)%3; render(); onStatus(it);
-    const {error}=await sb.from("items").update({status:it.status,updated_at:new Date().toISOString()}).eq("id",it.id);
-    if(error){it.status=prev;render();setMsg(U().saveErr)} else setMsg("");
-    return;
-  }
+  if(e.target.closest("#soonBtn")){soonOnly=!soonOnly;render();return}
+  if(ch){const v=ch.dataset.sf;statusFilter=v===""?null:(statusFilter===+v?null:+v);render();return}
+  if(e.target.closest("#clearF,#clearAll")){$("q").value="";statusFilter=null;typeFilter="";soonOnly=false;render();return}
+  const mo=e.target.closest(".more");
+  if(mo){const p=mo.previousElementSibling,open=p.classList.toggle("clamp")===false;mo.setAttribute("aria-expanded",open);mo.textContent=open?U().less:U().more;return}
   const ak=e.target.closest(".ask[data-title]");
   if(ak){openChat();ask((lang==="ar"?"اشرحي لي هذا المصدر ووش أستفيد منه: ":"Explain this resource and what I get from it: ")+ak.dataset.title)}
 });
 $("lang").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem("lib-lang",lang)}catch(_){}applyLang();render();paintCat()});
 $("q").addEventListener("input",render);
+/* status is a small select on each card */
+document.addEventListener("change",async e=>{
+  const st=e.target.closest&&e.target.closest("select.st"); if(!st) return;
+  const it=items.find(x=>x.id===st.dataset.id); if(!it) return;
+  const prev=it.status; it.status=+st.value; render(); onStatus(it);
+  const {error}=await sb.from("items").update({status:it.status,updated_at:new Date().toISOString()}).eq("id",it.id);
+  if(error){it.status=prev;render();setMsg(U().saveErr)} else setMsg("");
+});
+$("typeSel").addEventListener("change",()=>{typeFilter=$("typeSel").value;render()});
+$("sortSel").addEventListener("change",()=>{sortBy=$("sortSel").value;try{localStorage.setItem("lib-sort",sortBy)}catch(_){}render()});
+$("q").addEventListener("keydown",e=>{if(e.key==="Escape"&&$("q").value){e.stopPropagation();$("q").value="";render()}});
+/* "/" jumps to search (when not typing somewhere else) */
+addEventListener("keydown",e=>{
+  if(e.key!=="/"||e.ctrlKey||e.metaKey||e.altKey||$("app").hidden) return;
+  const a=document.activeElement; if(a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+  e.preventDefault(); $("q").focus(); $("q").select();
+});
 $("secAr").addEventListener("input",()=>secErr(""));
 $("addsec").addEventListener("submit",async e=>{
   e.preventDefault(); const u=U(), ar=$("secAr").value.trim(), en=$("secEn").value.trim();

@@ -24,12 +24,13 @@
 <div class="wrap" id="app" hidden>
   <header class="top-h">
     <div class="brand"><img src="cat/happy.png" alt="" width="44" height="44"><div><h1 id="h1">Ahlam's Library</h1><p class="sub" id="hsub"></p></div></div>
-    <div class="hbtns"><button class="ghost" id="theme" type="button"></button><button class="ghost" id="lang" type="button">EN</button><button class="ghost" id="logout" type="button" title="Sign out">⎋</button></div>
+    <div class="hbtns"><button class="ghost" id="theme" type="button"></button><button class="ghost" id="lang" type="button">EN</button><button class="ghost" id="logout" type="button"></button></div>
   </header>
   <div class="toolbar">
   <label class="search" for="q">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-    <input id="q" type="search" autocomplete="off">
+    <input id="q" type="search" autocomplete="off" enterkeyhint="search">
+    <kbd class="kbd" aria-hidden="true">/</kbd>
   </label>
   <nav class="tabs" id="tabs" role="tablist"></nav>
   </div>
@@ -40,9 +41,20 @@
     <button class="ghost" type="button" id="secCancel"></button>
     <p class="err" id="secErr" hidden></p>
   </form>
-  <section class="strip" aria-live="polite">
-    <div class="lbl" id="plabel"></div><div class="counts" id="counts"></div>
-    <div class="bar"><i id="pbar" style="width:0%"></i></div>
+  <section class="filters" aria-label="Filters">
+    <div class="frow">
+      <div class="counts" id="counts" role="group"></div>
+      <div class="fsel">
+        <label class="sel"><span class="vh" id="typeLbl"></span><select id="typeSel" aria-labelledby="typeLbl"></select></label>
+        <label class="sel"><span class="vh" id="sortLbl"></span><select id="sortSel" aria-labelledby="sortLbl"></select></label>
+      </div>
+    </div>
+    <div class="frow2" aria-live="polite">
+      <span class="lbl" id="plabel"></span>
+      <div class="bar"><i id="pbar" style="width:0%"></i></div>
+      <span class="rcount" id="rcount"></span>
+      <button class="linkbtn" type="button" id="clearF" hidden></button>
+    </div>
   </section>
   <main class="grid" id="grid"></main>
   <p class="msg" id="msg"></p>
