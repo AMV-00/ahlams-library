@@ -92,7 +92,12 @@ function progress() {
   return `Exam date: ${st.exam ? st.exam + ` (${dd} days left)` : "not set"}. Steps done: ${done.join(", ") || "none"}. Quiz accuracy: ${dom}.${wrong.length ? " Recently missed topics: " + wrong.join(", ") + "." : ""}`;
 }
 const STUDY_RE = /\b(aws|clf|c02|cloud practitioner|ec2|s3|iam|vpc|lambda)\b|سحاب|شهادة\s*aws|الشهادة|كلاود/i;
-function study(text) { if (!on && STUDY_RE.test(text || "")) { on = true; load().catch(() => {}); } return on; }
+function study(text) {
+  // on when the panel/quiz was used in this chat, or this message or one of the last few mentions AWS/CLF
+  const recent = A().history().slice(-6).map(m => m.content).join(" ");
+  if (!on && (STUDY_RE.test(text || "") || STUDY_RE.test(recent))) { on = true; load().catch(() => {}); }
+  return on;
+}
 
 /* ---- panel ---- */
 function weakest() {
