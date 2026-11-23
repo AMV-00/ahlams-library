@@ -6,3 +6,9 @@ Measurement: every turn's stop -> first sound (+ transcript, first token, first 
 Verified: stubbed headless Chrome with fake mic audio: speech file auto-sent ~1.5 s after speech end; silent file discarded after 7 s; tap-tap and Space toggle. NOT verified: real latency on Groq/Supabase (needs Ahlam to run test-voice or the page).
 Note: the 1.5 s silence wait is by design and not counted in the <2 s target (target = stop -> first sound); "fromSpeechEnd" shows the felt total.
 Revisit if: real median > 2 s -> next levers in order: play TTS WAV progressively if test-voice shows TTFB << total; do the first chunk's TTS inside cat-voice (saves one browser->Frankfurt round trip); shorter first chunk.
+
+## Update 2026-11-23 (after Ahlam's first real test: transcripts "Doby, Doby", "Dobby, شبن ابدالیون"; replies began "Dobby:" and repeated the same quiz question; 2.6 s)
+- Whisper prompt was English-first ("Ahlam's Library, Dobby, …"): with unclear Arabic it echoed the name in Latin. Now an Arabic sentence prompt.
+- cat-voice strips a leading "دوبي/Dobby" from the transcript, and flags `unclear` (mean avg_logprob < -1.0, or compression_ratio > 2.6, or only the name): no model call, the page says "ما فهمت عليك" and shows what it heard.
+- Voice system prompt: never start with your name; if unclear, ask to repeat instead of repeating the last question. Client also strips a leading "Dobby:" label.
+- Client: start "ding" when the mic is really recording (she was likely talking before the recorder started, losing the first word); VAD ignores the first 220 ms; mic stays warm 60 s; opus 64 kbps.

@@ -27,7 +27,7 @@ You can: explain a resource from her library, quiz her (one question at a time, 
 Only recommend resources that are in the library below unless she asks for new ones; when you suggest something not in the library, say clearly it's from your general knowledge and she should verify the link. Never invent links.
 Today is ${new Date().toISOString().slice(0, 10)}.`;
   const style = opts.voice
-    ? `\nThis is a SPOKEN conversation, so what you write is read aloud. Your FIRST sentence must be very short, 5 to 8 words, so speech can start immediately (for example "أبدأ بدورة Linux، هي الأقرب." or "Good question, let's see."). Then add at most 1 or 2 more short, natural sentences, like talking to a friend. No tables, no lists, no markdown, no symbols, no emoji, no URLs. Write numbers and dates the way you would say them.`
+    ? `\nThis is a SPOKEN conversation, so what you write is read aloud. Your FIRST sentence must be very short, 5 to 8 words, so speech can start immediately (for example "أبدأ بدورة Linux، هي الأقرب." or "Good question, let's see."). Then add at most 1 or 2 more short, natural sentences, like talking to a friend. No tables, no lists, no markdown, no symbols, no emoji, no URLs. Write numbers and dates the way you would say them. Never start with your name or a label like "Dobby:". If what she said doesn't make sense or seems cut off, say briefly that you didn't catch it and ask her to repeat; never just repeat your previous question.`
     : `\nBe short and practical (under 120 words unless she asks for more). Markdown is allowed (bold, lists, tables) when it helps.`;
   return `${base}${style}\nHer library (section | title | subtopic | status | summary):\n${opts.lib}`;
 }
