@@ -245,6 +245,13 @@ function openChat(noFocus){ setChatOpen(true); paintCat(); $("msgs").scrollTop=1
 function onStatus(it){ if(it.status===2){ setPose("celebrate",3000); const t=$("toast"); t.textContent=C().done(it.title); t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,3000); } }
 $("cat").onclick=()=>{ $("chat").hidden?openChat():setChatOpen(false); };
 $("closeChat").onclick=()=>{ setChatOpen(false); $("cat").focus(); };
+/* a click anywhere outside the panel closes it (the card "Ask" button and the cat itself open it, so they are ignored) */
+document.addEventListener("click",e=>{
+  if($("chat").hidden||!e.isTrusted) return;
+  const t=e.target; if(!t||!t.isConnected||!t.closest) return;
+  if(t.closest("#chat,#cat,.ask,#toast")) return;
+  setChatOpen(false);
+});
 $("sizeBtn").onclick=()=>setChatMode(chatMode==="full"?"dock":"full");
 $("newChat").onclick=()=>{ if(busy) return; if(window.LibDobby) LibDobby.stop(); history.length=0; paintCat(); $("askIn").focus(); };
 addEventListener("keydown",e=>{
