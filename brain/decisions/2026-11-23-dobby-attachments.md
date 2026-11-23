@@ -1,0 +1,7 @@
+# Decision: 📎 file attachments for Dobby + honest abilities
+Date: 2026-11-23 | Status: active
+Context: Ahlam asked how to send Dobby her CLF-C02 Drive files; Dobby told her to paste a Drive link and promised to read it (it can't fetch anything).
+Decision: attach.js. PDF text extracted in the browser with pdf.js 3.11.174 (cdnjs, lazy); txt/md/csv/json read as text; images resized to <=1600px JPEG and sent once to `cat` ({extract_image}) -> Groq vision model GROQ_VISION_MODEL (default qwen/qwen3.8-27b; Groq docs 2026-11-23: Llama 4 vision models shut down) transcribes + describes; result kept as the doc. Nothing stored server-side. Doc stays attached until × / new chat. Text chat: client sends the most related ~8k chars (keyword overlap + start); voice: client sends up to 60k, server `readDoc` picks by the transcript. With a doc, library context shrinks to 7k to stay inside Groq limits.
+System prompt now states: cannot open links/Drive/web; can read files attached with 📎; never claim other abilities.
+Verified: stubbed headless test (generated 5-page PDF -> 15k chars, question about one section picks it; image path calls extract_image). NOT verified: real vision model call (needs live test). Scanned PDFs have no text -> she is told to send pages as images.
+Revisit if: vision model errors (check function logs "groq vision error"), or she needs whole-book Q&A (then store chunks in Supabase + embeddings).

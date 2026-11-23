@@ -258,6 +258,7 @@ function paintCat(){
   $("listenBtn").title=lang==="ar"?"اضغطي وسولفي مع دوبي (أو المسطرة). يرد ويرجع يسمعك، واضغطي قبل ما تتكلمين للإنهاء":"Tap and talk (or Space). Dobby answers and listens again; tap before speaking to end";
   $("voiceSel").value=ttsVoice; $("voiceLbl").textContent=lang==="ar"?"الصوت":"Voice";
   if(window.LibDobby) LibDobby.refreshStatus();
+  if(window.LibAttach) LibAttach.paint();
 }
 function addMsg(who,text,keep=true){
   const d=document.createElement("div"); d.className="m "+(who==="me"?"me":"cat-m");
@@ -274,7 +275,8 @@ async function ask(text){
   if(busy||!text.trim()) return;
   busy=true; addMsg("me",text); setPose("think"); const bubble=addMsg("cat",C().think,false);
   try{
-    const {data,error}=await sb.functions.invoke("cat",{body:{messages:history,name:name}});
+    const doc=window.LibAttach?LibAttach.contextFor(text):null;
+    const {data,error}=await sb.functions.invoke("cat",{body:{messages:history,name:name,doc}});
     if(error||!data||!data.text) throw (error||new Error("empty"));
     setReply(bubble,data.text); history.push({role:"assistant",content:data.text}); setPose("explain",4000); if(voice) speak(data.text);
   }catch(e){ try{ if(e&&e.context&&e.context.json) console.error("cat error body:",await e.context.json()); }catch(_){} console.error(e); bubble.dataset.raw=C().err; bubble.textContent=C().err; history.pop(); setPose("happy"); }
@@ -309,7 +311,7 @@ document.addEventListener("click",e=>{
   closeChat();
 });
 $("sizeBtn").onclick=()=>setChatMode(chatMode==="full"?"dock":"full");
-$("newChat").onclick=()=>{ if(busy) return; if(window.LibDobby) LibDobby.stop(); history.length=0; paintCat(); $("askIn").focus(); };
+$("newChat").onclick=()=>{ if(busy) return; if(window.LibDobby) LibDobby.stop(); if(window.LibAttach) LibAttach.clear(); history.length=0; paintCat(); $("askIn").focus(); };
 addEventListener("keydown",e=>{
   if(e.key!=="Escape"||$("chat").hidden) return;
   if(!$("setForm").hidden){ $("setForm").hidden=true; $("setBtn").setAttribute("aria-expanded","false"); return; }

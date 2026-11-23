@@ -81,8 +81,11 @@
     <div class="chat-foot">
       <div class="quick" id="quick"></div>
       <div class="vstatus" id="vstatus" role="status" aria-live="polite" hidden><i class="dot"></i><div class="vcol"><span id="vtext"></span><small id="vheard" hidden></small></div></div>
+      <div class="att-chip" id="attChip" hidden></div>
       <form id="askForm" class="composer">
         <textarea id="askIn" rows="1" autocomplete="off" enterkeyhint="send"></textarea>
+        <input type="file" id="attFile" accept=".pdf,application/pdf,image/*,.txt,.md,.csv,.json,text/plain,text/markdown" hidden>
+        <button class="ib att" id="attBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg></button>
         <button class="ib mic" id="listenBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
         <button class="save send" id="sendBtn" type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
       </form>
@@ -98,6 +101,7 @@
 <script src="dobby.js"></script>
 <script src="recs.js"></script>
 <script src="app.js"></script>
+<script src="attach.js"></script>
 <script src="cat-trail.js"></script>
 </body>
 </html>

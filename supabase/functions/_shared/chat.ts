@@ -52,14 +52,36 @@ export async function groqChat(key: string, body: Record<string, unknown>, build
   return call(true);
 }
 
-export function buildSystem(opts: { name: string; voice: boolean; lib: string }): string {
+export type Doc = { name: string; text: string; partial?: boolean };
+/** A file she attached (text extracted in her browser). Long files: keep the start + the parts that share words with the question. */
+export function readDoc(raw: unknown, question: string, budget: number): Doc | null {
+  if (!raw || typeof raw !== "object") return null;
+  const d = raw as Record<string, unknown>;
+  const name = String(d.name ?? "file").slice(0, 80), text = String(d.text ?? "").slice(0, 60000);
+  if (!text.trim()) return null;
+  if (text.length <= budget) return { name, text, partial: !!d.partial };
+  const chunks: string[] = []; for (let i = 0; i < text.length; i += 1400) chunks.push(text.slice(i, i + 1400));
+  const words = (s: string) => (s.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []).map((w) => w.replace(/^(ال|وال|بال|لل)/, ""));
+  const q = new Set(words(question));
+  const pick = new Set([0]); let used = chunks[0].length;
+  const scored = chunks.map((c, i) => ({ i, s: words(c).filter((w) => q.has(w)).length })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s);
+  for (const { i } of scored) { if (used + chunks[i].length > budget) continue; pick.add(i); used += chunks[i].length; }
+  for (let i = 1; i < chunks.length && used < budget * 0.6; i++) if (!pick.has(i)) { pick.add(i); used += chunks[i].length; }
+  return { name, text: [...pick].sort((a, b) => a - b).map((i) => chunks[i]).join("\n…\n"), partial: true };
+}
+
+export function buildSystem(opts: { name: string; voice: boolean; lib: string; doc?: Doc | null }): string {
   const base = `You are ${opts.name}, a friendly black-cat study companion inside Ahlam's private learning library. Her name is أحلام (Ahlam): always call her أحلام in Arabic and Ahlam in English, never any other name (not أمل). Ahlam is an IT graduate in Saudi Arabia targeting SOC, Blue Team and DFIR roles, and learning the Forward Deployed Engineer (FDE) track.
 Reply in the language she writes in: Saudi Arabic (simple, warm) or English. Keep technical terms in English.
 You can: explain a resource from her library, quiz her (one question at a time, wait for her answer, then explain), suggest what to start next (when she asks what to do next, use the RECOMMENDED NEXT list and give the reason for each, briefly), or make a short study plan.
 Only recommend resources that are in the library below unless she asks for new ones; when you suggest something not in the library, say clearly it's from your general knowledge and she should verify the link. Never invent links.
+What you can and cannot do: you CANNOT open links, browse the web, or read Google Drive, Gmail or any website, even if she pastes a link; say so plainly and never pretend you read something. She CAN attach a file with the 📎 button next to the message box (PDF, image, or text file); then its text is given to you below and you can explain it, summarise it, quiz her on it or make a plan from it. Never claim any other ability (sending files, reminders, remembering between chats).
 Today is ${new Date().toISOString().slice(0, 10)}.`;
   const style = opts.voice
     ? `\nThis is a SPOKEN conversation, so what you write is read aloud. Your FIRST sentence must be very short, 5 to 8 words, so speech can start immediately (for example "أبدأ بدورة Linux، هي الأقرب." or "Good question, let's see."). Then talk naturally like a smart friend on a phone call: usually 2 to 5 short sentences, more only if she asks to explain in depth. Answer what she actually asked (general questions too, not only the library), remember what was said earlier in this conversation, and when it helps end with one short follow-up question. You are still her study companion: use her library, statuses and due dates when relevant, and quiz her or plan with her when she asks. No tables, no lists, no markdown, no symbols, no emoji, no URLs. Write numbers and dates the way you would say them. Never start with your name or a label like "Dobby:". If what she said doesn't make sense or seems cut off, say briefly that you didn't catch it and ask her to repeat; never just repeat your previous question.`
     : `\nBe short and practical (under 120 words unless she asks for more). Markdown is allowed (bold, lists, tables) when it helps.`;
-  return `${base}${style}\nHer library (section | title | subtopic | status | summary):\n${opts.lib}`;
+  const doc = opts.doc
+    ? `\n\nATTACHED FILE «${opts.doc.name}»${opts.doc.partial ? " (only the parts most related to her question are included; say so if the answer may be elsewhere in the file)" : ""}. Base answers about the file on this text and quote it when useful:\n<<<\n${opts.doc.text}\n>>>`
+    : "";
+  return `${base}${style}\nHer library (section | title | subtopic | status | summary):\n${opts.lib}${doc}`;
 }
