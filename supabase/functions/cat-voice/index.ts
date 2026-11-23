@@ -6,7 +6,7 @@
 //   {"stt":"...","ms":{"stt":N}}  {"t":"delta"}...  {"done":true,"ms":{"stt":N,"first_token":N,"total":N}}   or {"error":"..."}
 // GROQ_API_KEY lives ONLY in Supabase secrets.
 import { cors, json, userFromJwt } from "../_shared/auth.ts";
-import { buildSystem, fitHistory, getLibrary, groqChat } from "../_shared/chat.ts";
+import { buildSystem, fitHistory, getLibrary, groqChat, readDoc } from "../_shared/chat.ts";
 
 const STT_MODEL = Deno.env.get("GROQ_STT_MODEL") ?? "whisper-large-v3-turbo";
 // Same model as the text chat (gpt-oss-120b) so spoken answers are as smart; reasoning_effort "low" keeps the first token fast.
@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
   const audio = form.get("audio");
   if (!(audio instanceof File) || audio.size < 200) return json(req, { error: "no audio" }, 400);
   if (audio.size > MAX_AUDIO) return json(req, { error: "audio too large" }, 413);
-  let meta: { messages?: { role: string; content: string }[]; name?: string; lang?: string } = {};
+  let meta: { messages?: { role: string; content: string }[]; name?: string; lang?: string; doc?: unknown } = {};
   try { meta = JSON.parse(String(form.get("meta") ?? "{}")); } catch { /* ignore */ }
   const lang = meta.lang === "en" ? "en" : "ar";
   const history = (meta.messages ?? [])
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
           model: VOICE_MODEL, temperature: 0.6, max_completion_tokens: 700, stream: true,
           reasoning_effort: "low", include_reasoning: false,
         }, (small) => [
-          { role: "system", content: buildSystem({ name, voice: true, lib: small ? libRes.slice(0, 3000) : libRes }) },
+          { role: "system", content: buildSystem({ name, voice: true, lib: small ? libRes.slice(0, 3000) : libRes, doc: readDoc(meta.doc, text, small ? 3000 : 6000) }) },
           ...fitHistory([...history, { role: "user", content: text.slice(0, 2000) }], small ? 2500 : 7000, small ? 1200 : 2500),
         ]);
         if (!r.ok || !r.body) {

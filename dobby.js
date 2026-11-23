@@ -236,7 +236,7 @@ async function send(blob, speechEnd) {
     const tok = await app.token();
     const fd = new FormData();
     fd.set("audio", blob, "speech." + (blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "mp4" : "webm"));
-    fd.set("meta", JSON.stringify({ messages: app.history().slice(-18), name: app.name(), lang: app.lang() }));
+    fd.set("meta", JSON.stringify({ messages: app.history().slice(-18), name: app.name(), lang: app.lang(), doc: window.LibAttach ? LibAttach.full() : null }));   // the server picks the parts that match the transcript
     const r = await fetch(`${app.cfg.SUPABASE_URL}/functions/v1/cat-voice`, { method: "POST", signal: myCtrl.signal, headers: { Authorization: "Bearer " + tok, apikey: app.cfg.SUPABASE_ANON_KEY }, body: fd });
     if (!r.ok) { let b = ""; try { b = await r.text(); } catch (e) {} err("cat-voice failed:", r.status, b.slice(0, 300)); throw new Error("http " + r.status); }
     log(`recording ${(blob.size / 1024).toFixed(1)} KB sent, response headers after ${Math.round(now() - tRelease)} ms`);
