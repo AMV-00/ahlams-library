@@ -18,10 +18,10 @@ const MIN_REC_MS = 350, MAX_REC_MS = 30000, MIC_WARM_MS = 60000, TTS_TIMEOUT_MS 
 
 /* ---------- status UI ---------- */
 const MSG = {
-  ar: { rec: "أسمعك… اضغطي للإرسال أو اسكتي ثانية ونص", mic: "جاري تشغيل المايك…", thinking: "أفكر…", speaking: "أتكلم… اضغطي لقاطعني", hint: "اضغطي 🎙 (أو المسطرة) وتكلمي، وأرسل لما تسكتين",
-        denied: "ما قدرت أستخدم المايك. اسمحي للموقع من إعدادات المتصفح.", nospeech: "ما سمعت شي، جربي مرة ثانية.", unclear: "ما فهمت عليك، عيديها بصوت أوضح.", err: "صار خطأ في الصوت. جربي مرة ثانية.", unsupported: "المتصفح ما يدعم تسجيل الصوت." },
-  en: { rec: "Listening… tap to send, or just pause", mic: "Starting the microphone…", thinking: "Thinking…", speaking: "Speaking… press to interrupt", hint: "Tap 🎙 (or Space) and talk; I send when you pause",
-        denied: "Couldn't use the microphone. Allow it in the browser's site settings.", nospeech: "I didn't hear anything, try again.", unclear: "I didn't catch that, say it again a bit clearer.", err: "Voice error. Try again.", unsupported: "This browser can't record audio." }
+  ar: { rec: "أسمعك… (اضغطي 🎙 قبل ما تتكلمين لإنهاء المحادثة)", mic: "جاري تشغيل المايك…", thinking: "أفكر…", speaking: "أتكلم… اضغطي لقاطعني", hint: "اضغطي 🎙 (أو المسطرة) وتكلمي، وأرسل لما تسكتين",
+        denied: "ما قدرت أستخدم المايك. اسمحي للموقع من إعدادات المتصفح.", nospeech: "ما سمعت شي، جربي مرة ثانية.", unclear: "ما فهمت عليك، عيديها بصوت أوضح.", ended: "خلصنا 👋 اضغطي 🎙 متى ما بغيتي نكمل", err: "صار خطأ في الصوت. جربي مرة ثانية.", unsupported: "المتصفح ما يدعم تسجيل الصوت." },
+  en: { rec: "Listening… (tap 🎙 before speaking to end the chat)", mic: "Starting the microphone…", thinking: "Thinking…", speaking: "Speaking… press to interrupt", hint: "Tap 🎙 (or Space) and talk; I send when you pause",
+        denied: "Couldn't use the microphone. Allow it in the browser's site settings.", nospeech: "I didn't hear anything, try again.", unclear: "I didn't catch that, say it again a bit clearer.", ended: "Done 👋 tap 🎙 whenever you want to continue", err: "Voice error. Try again.", unsupported: "This browser can't record audio." }
 };
 const L = () => MSG[A().lang()] || MSG.ar;
 let state = "idle";                                  // idle | mic | recording | thinking | speaking
@@ -254,7 +254,8 @@ async function send(blob, speechEnd) {
           if (!stt) {
             if (j.unclear) warn("unclear transcript, not answered:", JSON.stringify(j.heard), "logprob", j.ms && j.ms.logprob);
             meBubble.closest(".m").remove(); bubble.closest(".m").remove(); app.setBusy(false); app.setPose("happy");
-            flash(j.unclear ? L().unclear + (j.heard ? " (سمعت: " + String(j.heard).slice(0, 40) + ")" : "") : L().nospeech, 6000); return;
+            flash(j.unclear ? L().unclear + (j.heard ? " (سمعت: " + String(j.heard).slice(0, 40) + ")" : "") : L().nospeech, 6000);
+            setTimeout(() => listenAgain(myCtrl), 900); return;
           }
           meBubble.textContent = stt; meBubble.dataset.raw = stt; setHeard(stt);
           app.history().push({ role: "user", content: stt }); userPushed = true;
@@ -282,12 +283,21 @@ async function send(blob, speechEnd) {
     if (myCtrl.signal.aborted) {                       // she pressed again while it was talking
       if (full.trim()) { app.setReply(bubble, full); app.history().push({ role: "assistant", content: full }); }
       else { bubble.closest(".m").remove(); if (!stt) meBubble.closest(".m").remove(); if (userPushed) app.history().pop(); }
-    } else { err("voice turn failed:", e); bubble.textContent = A().C().err; if (userPushed) app.history().pop(); flash(L().err); }
+    } else { failed = true; err("voice turn failed:", e); bubble.textContent = A().C().err; if (userPushed) app.history().pop(); flash(L().err); }
   } finally {
     app.setBusy(false); app.setPose("happy");
     if (state === "thinking" || state === "speaking") show("idle");
+    listenAgain(myCtrl);
   }
 }
+/* Conversation mode (like a phone call): after Dobby finishes, the mic opens again by itself (with the ding).
+   It ends when she taps 🎙 before speaking, says nothing for 7 s, closes the chat, or leaves the page. */
+let convo = false, failed = false;
+function listenAgain(myCtrl) {
+  if (!convo || failed || (myCtrl && myCtrl.signal.aborted) || document.hidden || ($("chat") && $("chat").hidden)) { if (failed) convo = false; failed = false; return; }
+  setTimeout(() => { if (convo && state === "idle" && !pressed && !A().busy()) startRec("auto"); }, 350);
+}
+function endConvo(why, text) { if (convo) log("conversation ended:", why); convo = false; if (text) flash(text, 5000); }
 
 /* ---------- tap to talk: tap starts, tap stops, or 1.5 s of silence stops ---------- */
 // Voice activity detection on the mic: RMS level every 50 ms against a threshold calibrated from the first 300 ms (room noise).
@@ -315,7 +325,10 @@ function vadStart(stream) {
     if (rms >= vad.th) { if (++vad.voiced >= 2) { if (!vad.heard) log(`speech detected after ${Math.round(el)} ms`); vad.heard = true; vad.lastVoice = t; } }
     else vad.voiced = 0;
     if (vad.heard && t - vad.lastVoice >= SILENCE_MS) { vad.speechEnd = vad.lastVoice; log(`${SILENCE_MS} ms of silence -> sending`); stopRec("silence"); }
-    else if (!vad.heard && el >= NO_SPEECH_MS) { warn(`no speech in ${NO_SPEECH_MS / 1000} s, recording discarded`); cancelRecording("no speech"); flash(L().nospeech); }
+    else if (!vad.heard && el >= NO_SPEECH_MS) {
+      const auto = pressSource === "auto"; warn(`no speech in ${NO_SPEECH_MS / 1000} s, recording discarded`); cancelRecording("no speech");
+      endConvo("no speech", auto ? L().ended : L().nospeech);
+    }
   }, 50);
 }
 function vadStop() {
@@ -328,6 +341,7 @@ async function startRec(source) {
   if (pressed || state === "recording" || state === "mic") return;
   if (!navigator.mediaDevices || !window.MediaRecorder) { err("MediaRecorder/getUserMedia not available"); flash(L().unsupported); return; }
   pressed = true; pressSource = source; cancelled = false;
+  if (source !== "auto") { convo = true; failed = false; }
   if (ctrl) ctrl.abort();                              // talking over Dobby: stop him at once
   stopPlayback(); P.marks = null;
   audioCtx(); prewarm(); A().token().catch(() => {}); A().openChat(true);
@@ -368,7 +382,8 @@ function cancelRecording(why) {
 }
 /** One tap: idle/speaking -> start listening; listening -> send now; mic still starting -> cancel. */
 function toggle(source) {
-  if (state === "recording") stopRec(source);
+  if (state === "recording" && !vad.heard) { cancelRecording("tapped before speaking"); endConvo("tapped before speaking", L().ended); }
+  else if (state === "recording") stopRec(source);
   else if (state === "mic" && pressed) cancelRecording("tapped again before the mic was ready");
   else startRec(source);
 }
@@ -389,10 +404,10 @@ function spaceOk(e) {
   return true;
 }
 document.addEventListener("keydown", e => { if (!spaceOk(e)) return; e.preventDefault(); if (!e.repeat) toggle("space"); });
-document.addEventListener("visibilitychange", () => { if (document.hidden) { cancelRecording("page in the background"); stopPlayback(); } });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { endConvo("page hidden"); cancelRecording("page in the background"); stopPlayback(); } });
 addEventListener("pagehide", () => { cancelRecording("page hidden"); stopPlayback(); });
 
-function stopAll() { cancelRecording("stopped"); if (ctrl) ctrl.abort(); stopPlayback(); if (mic) { mic.getTracks().forEach(t => t.stop()); mic = null; } show("idle"); $("vstatus").hidden = true; }
+function stopAll() { endConvo("stopped"); cancelRecording("stopped"); if (ctrl) ctrl.abort(); stopPlayback(); if (mic) { mic.getTracks().forEach(t => t.stop()); mic = null; } show("idle"); $("vstatus").hidden = true; }
 
 window.LibDobby = { stop: stopAll, say, refreshStatus, times, toggle, state: () => state, isOn: () => state === "recording", _take: takeSentences, _P: P };
 })();

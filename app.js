@@ -201,7 +201,7 @@ function paintCat(){
   if(!history.length){ $("msgs").innerHTML=""; addMsg("cat",t.hi(nm()),false); }
   $("voiceBtn").hidden=!("speechSynthesis" in window);
   $("listenBtn").hidden=!(navigator.mediaDevices&&window.MediaRecorder);
-  $("listenBtn").title=lang==="ar"?"اضغطي وتكلمي (أو المسطرة)، واضغطي ثانية للإرسال أو اسكتي ثانية ونص":"Tap and talk (or Space); tap again or pause 1.5 s to send";
+  $("listenBtn").title=lang==="ar"?"اضغطي وسولفي مع دوبي (أو المسطرة). يرد ويرجع يسمعك، واضغطي قبل ما تتكلمين للإنهاء":"Tap and talk (or Space). Dobby answers and listens again; tap before speaking to end";
   $("voiceSel").value=ttsVoice; $("voiceLbl").textContent=lang==="ar"?"الصوت":"Voice";
   if(window.LibDobby) LibDobby.refreshStatus();
 }
@@ -243,21 +243,23 @@ function setChatMode(m){ chatMode=m; try{localStorage.setItem("lib-chat-mode",m)
 function growAsk(){ const a=$("askIn"); a.style.height="auto"; a.style.height=Math.min(a.scrollHeight,160)+"px"; }
 function openChat(noFocus){ setChatOpen(true); paintCat(); $("msgs").scrollTop=1e9; if(!noFocus) $("askIn").focus(); }
 function onStatus(it){ if(it.status===2){ setPose("celebrate",3000); const t=$("toast"); t.textContent=C().done(it.title); t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,3000); } }
-$("cat").onclick=()=>{ $("chat").hidden?openChat():setChatOpen(false); };
-$("closeChat").onclick=()=>{ setChatOpen(false); $("cat").focus(); };
+/* closing the panel also stops Dobby (conversation mode would otherwise keep listening) */
+function closeChat(){ setChatOpen(false); if(window.LibDobby) LibDobby.stop(); }
+$("cat").onclick=()=>{ $("chat").hidden?openChat():closeChat(); };
+$("closeChat").onclick=()=>{ closeChat(); $("cat").focus(); };
 /* a click anywhere outside the panel closes it (the card "Ask" button and the cat itself open it, so they are ignored) */
 document.addEventListener("click",e=>{
   if($("chat").hidden||!e.isTrusted) return;
   const t=e.target; if(!t||!t.isConnected||!t.closest) return;
   if(t.closest("#chat,#cat,.ask,#toast")) return;
-  setChatOpen(false);
+  closeChat();
 });
 $("sizeBtn").onclick=()=>setChatMode(chatMode==="full"?"dock":"full");
 $("newChat").onclick=()=>{ if(busy) return; if(window.LibDobby) LibDobby.stop(); history.length=0; paintCat(); $("askIn").focus(); };
 addEventListener("keydown",e=>{
   if(e.key!=="Escape"||$("chat").hidden) return;
   if(!$("setForm").hidden){ $("setForm").hidden=true; $("setBtn").setAttribute("aria-expanded","false"); return; }
-  if(chatMode==="full"&&innerWidth>760) setChatMode("dock"); else { setChatOpen(false); $("cat").focus(); }
+  if(chatMode==="full"&&innerWidth>760) setChatMode("dock"); else { closeChat(); $("cat").focus(); }
 });
 $("setBtn").onclick=()=>{ const f=$("setForm"); f.hidden=!f.hidden; $("setBtn").setAttribute("aria-expanded",!f.hidden); $("nameIn").value=name; if(!f.hidden) $("nameIn").focus(); };
 $("voiceBtn").onclick=()=>{ voice=!voice; $("voiceBtn").setAttribute("aria-pressed",voice); if(!voice) stopSpeaking(); };
