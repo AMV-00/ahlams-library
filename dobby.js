@@ -1,8 +1,9 @@
-/* Dobby push-to-talk.
-   Hold the 🎙 button (or the Space bar when you are not typing), talk, let go -> the audio goes to the `cat-voice` Edge Function
+/* Dobby tap-to-talk.
+   Tap 🎙 (or Space when you are not typing) and talk. Tap again to send, or just stop talking: 1.5 s of silence sends it.
+   The audio goes to the `cat-voice` Edge Function
    (Groq Whisper -> fast model, streamed) -> the reply is spoken sentence by sentence with Groq Orpheus (Noura) through ONE Web Audio queue.
    Pressing again while Dobby talks stops it. If Groq TTS is slower than 2.5 s, that sentence is spoken with the browser's natural voice.
-   Everything is logged to the console with "[dobby]", including release -> first sound. */
+   Everything is logged to the console with "[dobby]", including stop -> first sound; LibDobby.times() shows the last 20 turns. */
 (function () {
 "use strict";
 const A = () => window.LibApp;
@@ -12,13 +13,14 @@ const warn = (...a) => console.warn("[dobby]", ...a);
 const err = (...a) => console.error("[dobby]", ...a);
 const now = () => performance.now();
 
+const SILENCE_MS = 1500, NO_SPEECH_MS = 7000, VAD_CALIB_MS = 300, VAD_MIN_TH = 0.012, VAD_MAX_TH = 0.08;
 const MIN_REC_MS = 350, MAX_REC_MS = 30000, MIC_WARM_MS = 8000, TTS_TIMEOUT_MS = 2500, TTS_PARALLEL = 3, WARM_EVERY_MS = 20000;
 
 /* ---------- status UI ---------- */
 const MSG = {
-  ar: { rec: "أسمعك… شيلي إصبعك لما تخلصين", mic: "جاري تشغيل المايك…", thinking: "أفكر…", speaking: "أتكلم… اضغطي لقاطعني", hint: "اضغطي وامسكي 🎙 (أو المسطرة) وتكلمي، وشيلي إصبعك للإرسال",
+  ar: { rec: "أسمعك… اضغطي للإرسال أو اسكتي ثانية ونص", mic: "جاري تشغيل المايك…", thinking: "أفكر…", speaking: "أتكلم… اضغطي لقاطعني", hint: "اضغطي 🎙 (أو المسطرة) وتكلمي، وأرسل لما تسكتين",
         denied: "ما قدرت أستخدم المايك. اسمحي للموقع من إعدادات المتصفح.", nospeech: "ما سمعت شي، جربي مرة ثانية.", err: "صار خطأ في الصوت. جربي مرة ثانية.", unsupported: "المتصفح ما يدعم تسجيل الصوت." },
-  en: { rec: "Listening… let go when you're done", mic: "Starting the microphone…", thinking: "Thinking…", speaking: "Speaking… press to interrupt", hint: "Press and hold 🎙 (or Space), talk, then let go to send",
+  en: { rec: "Listening… tap to send, or just pause", mic: "Starting the microphone…", thinking: "Thinking…", speaking: "Speaking… press to interrupt", hint: "Tap 🎙 (or Space) and talk; I send when you pause",
         denied: "Couldn't use the microphone. Allow it in the browser's site settings.", nospeech: "I didn't hear anything, try again.", err: "Voice error. Try again.", unsupported: "This browser can't record audio." }
 };
 const L = () => MSG[A().lang()] || MSG.ar;
@@ -156,10 +158,27 @@ function stopPlayback() {
 }
 async function whenIdle() { for (;;) { if (!P.running && !P.items.length && (!ctx || scheduledEnd() <= 10)) return; await sleep(40); } }
 
+const TIMES_KEY = "dobby-times";
+function saveTimes(row) {
+  try { const a = JSON.parse(localStorage.getItem(TIMES_KEY) || "[]"); a.push(row); localStorage.setItem(TIMES_KEY, JSON.stringify(a.slice(-20))); } catch (e) {}
+}
+/** Last 20 voice turns (ms after the recording stopped). In the console: LibDobby.times() */
+function times() {
+  let a = []; try { a = JSON.parse(localStorage.getItem(TIMES_KEY) || "[]"); } catch (e) {}
+  if (a.length) {
+    console.table(a);
+    const med = k => { const v = a.map(x => x[k]).filter(x => typeof x === "number").sort((x, y) => x - y); return v.length ? v[Math.floor(v.length / 2)] : "—"; };
+    console.log(`[dobby] median of ${a.length}: stop → first sound ${med("sound")} ms | transcript ${med("stt")} | first token ${med("token")} | first TTS audio ${med("ttsBytes")}`);
+  } else console.log("[dobby] no voice turns measured yet");
+  return a;
+}
 function reportTimes() {
   const m = P.marks; if (!m || !m.sound || m.reported) return; m.reported = true;
-  const d = k => m[k] ? Math.round(m[k] - m.release) : "—";
-  console.log(`[dobby] ⏱ release → first sound: ${Math.round(m.sound - m.release)} ms ${m.sound - m.release < 2000 ? "✓ (<2 s)" : "✗ (>2 s)"}`,
+  const d = k => m[k] ? Math.round(m[k] - m.release) : "—", total = Math.round(m.sound - m.release);
+  saveTimes({ at: new Date().toISOString().slice(0, 19), sound: total, stt: d("stt"), token: d("token"), ttsReq: d("ttsReq"), ttsBytes: d("ttsBytes"),
+    fromSpeechEnd: Math.round(m.sound - m.speechEnd), serverStt: m.server && m.server.stt, serverToken: m.server && m.server.first_token });
+  const el = $("vheard"); if (el && el.textContent) { el.textContent += ` · ⏱ ${(total / 1000).toFixed(1)}s`; }
+  console.log(`[dobby] ⏱ stop → first sound: ${total} ms ${total < 2000 ? "✓ (<2 s)" : "✗ (>2 s)"} (from the end of your speech: ${Math.round(m.sound - m.speechEnd)} ms)`,
     `\n   transcript received: ${d("stt")} ms | first model token: ${d("token")} ms | first TTS request: ${d("ttsReq")} ms | first TTS audio: ${d("ttsBytes")} ms`,
     m.server ? `\n   server: stt ${m.server.stt} ms, first token ${m.server.first_token} ms after stt` : "");
 }
@@ -193,11 +212,11 @@ function takeSentences(buf, first) {
 }
 
 let ctrl = null;
-async function send(blob) {
+async function send(blob, speechEnd) {
   const app = A();
   if (app.busy()) { warn("busy, ignoring this recording"); show("idle"); return; }
   app.setBusy(true); stopPlayback();
-  const marks = P.marks = { release: tRelease, sent: now() };
+  const marks = P.marks = { release: tRelease, speechEnd: speechEnd || tRelease, sent: now() };
   show("thinking");
   const meBubble = app.addMsg("me", "🎙 …", false);                 // not in history until we know the transcript
   app.setPose("think");
@@ -251,56 +270,93 @@ async function send(blob) {
   }
 }
 
-/* ---------- push-to-talk ---------- */
-async function pressStart(source) {
+/* ---------- tap to talk: tap starts, tap stops, or 1.5 s of silence stops ---------- */
+// Voice activity detection on the mic: RMS level every 50 ms against a threshold calibrated from the first 300 ms (room noise).
+const vad = { timer: null, src: null, an: null, floor: 0, calib: [], th: 0.02, voiced: 0, heard: false, lastVoice: 0, speechEnd: 0 };
+function vadStart(stream) {
+  vadStop();
+  try {
+    const c = audioCtx(); vad.src = c.createMediaStreamSource(stream); vad.an = c.createAnalyser(); vad.an.fftSize = 1024;
+    vad.src.connect(vad.an);                                          // not connected to the speakers
+  } catch (e) { warn("VAD unavailable, tap again to send:", e && e.message); return; }
+  const data = new Float32Array(vad.an.fftSize);
+  Object.assign(vad, { calib: [], th: VAD_MIN_TH, voiced: 0, heard: false, lastVoice: 0, speechEnd: 0 });
+  vad.timer = setInterval(() => {
+    if (state !== "recording") return;
+    vad.an.getFloatTimeDomainData(data);
+    let s = 0; for (let i = 0; i < data.length; i++) s += data[i] * data[i];
+    const rms = Math.sqrt(s / data.length), t = now(), el = t - recStart;
+    if (el < VAD_CALIB_MS) { vad.calib.push(rms); if (rms < VAD_MIN_TH * 1.5) return; }      // room noise; loud start = she already talks
+    else if (vad.calib.length) {
+      const quiet = vad.calib.filter(x => x < VAD_MIN_TH * 1.5).sort((a, b) => a - b);   // ignore frames where she already talks
+      const floor = quiet.length >= 3 ? quiet[Math.floor(quiet.length / 2)] : 0;
+      vad.th = Math.min(VAD_MAX_TH, Math.max(VAD_MIN_TH, floor * 3)); vad.calib = []; log(`VAD threshold ${vad.th.toFixed(3)} (room noise ${floor.toFixed(3)})`);
+    }
+    if (rms >= vad.th) { if (++vad.voiced >= 2) { if (!vad.heard) log(`speech detected after ${Math.round(el)} ms`); vad.heard = true; vad.lastVoice = t; } }
+    else vad.voiced = 0;
+    if (vad.heard && t - vad.lastVoice >= SILENCE_MS) { vad.speechEnd = vad.lastVoice; log(`${SILENCE_MS} ms of silence -> sending`); stopRec("silence"); }
+    else if (!vad.heard && el >= NO_SPEECH_MS) { warn(`no speech in ${NO_SPEECH_MS / 1000} s, recording discarded`); cancelRecording("no speech"); flash(L().nospeech); }
+  }, 50);
+}
+function vadStop() {
+  clearInterval(vad.timer); vad.timer = null;
+  try { if (vad.src) vad.src.disconnect(); } catch (e) {}
+  vad.src = vad.an = null;
+}
+
+async function startRec(source) {
   if (pressed || state === "recording" || state === "mic") return;
   if (!navigator.mediaDevices || !window.MediaRecorder) { err("MediaRecorder/getUserMedia not available"); flash(L().unsupported); return; }
   pressed = true; pressSource = source; cancelled = false;
   if (ctrl) ctrl.abort();                              // talking over Dobby: stop him at once
   stopPlayback(); P.marks = null;
-  audioCtx(); prewarm(); A().openChat(true);
+  audioCtx(); prewarm(); A().token().catch(() => {}); A().openChat(true);
   show("mic");
   let stream;
   try { stream = await getMic(); }
   catch (e) { err("getUserMedia failed:", e && e.name, e && e.message); pressed = false; flash(L().denied, 7000); return; }
-  if (!pressed || cancelled) { pressed = false; micIdleLater(); flash(L().hint); return; }       // let go before the mic was ready
+  if (!pressed || cancelled) { pressed = false; micIdleLater(); show("idle"); $("vstatus").hidden = true; return; }   // tapped again before the mic was ready
   chunks = [];
   try { mr = new MediaRecorder(stream, pickMime() ? { mimeType: pickMime() } : undefined); }
   catch (e) { err("MediaRecorder failed:", e); pressed = false; flash(L().err); return; }
   mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-  mr.start(); recStart = now(); show("recording");
+  mr.start(); recStart = now(); show("recording"); vadStart(stream);
   log(`recording started (${source}, ${mr.mimeType})`);
-  clearTimeout(autoStopT); autoStopT = setTimeout(() => { if (pressed) { warn("30 s limit reached"); pressEnd("limit"); } }, MAX_REC_MS);
+  clearTimeout(autoStopT); autoStopT = setTimeout(() => { if (pressed) { warn("30 s limit reached"); stopRec("limit"); } }, MAX_REC_MS);
 }
-function pressEnd(source) {
+function stopRec(source) {
   if (!pressed) return;
-  pressed = false; clearTimeout(autoStopT); tRelease = now();
-  if (!mr || mr.state !== "recording") { if (state === "mic") flash(L().hint); return; }
+  pressed = false; clearTimeout(autoStopT); vadStop(); tRelease = now();
+  const speechEnd = vad.speechEnd || tRelease; vad.speechEnd = 0;
+  if (!mr || mr.state !== "recording") { if (state === "mic") { cancelled = true; show("idle"); $("vstatus").hidden = true; } return; }
   const rec = mr, dur = tRelease - recStart;
   rec.onstop = () => {
     micIdleLater();
     const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
     if (cancelled) { log("recording discarded"); show("idle"); return; }
     if (dur < MIN_REC_MS || blob.size < 600) { log(`too short (${Math.round(dur)} ms), ignored`); flash(L().hint); return; }
-    log(`released (${source}) after ${Math.round(dur)} ms of speech`);
-    send(blob);
+    log(`stopped (${source}) after ${Math.round(dur)} ms`);
+    send(blob, speechEnd);
   };
   show("thinking"); rec.stop();
 }
 function cancelRecording(why) {
   if (!pressed && state !== "recording") return;
-  warn("recording cancelled:", why); cancelled = true; pressed = false; clearTimeout(autoStopT);
+  warn("recording cancelled:", why); cancelled = true; pressed = false; clearTimeout(autoStopT); vadStop();
   try { if (mr && mr.state === "recording") mr.stop(); } catch (e) {}
   micIdleLater(); show("idle"); $("vstatus").hidden = true;
 }
+/** One tap: idle/speaking -> start listening; listening -> send now; mic still starting -> cancel. */
+function toggle(source) {
+  if (state === "recording") stopRec(source);
+  else if (state === "mic" && pressed) cancelRecording("tapped again before the mic was ready");
+  else startRec(source);
+}
 
-const btn = () => $("listenBtn");
-document.addEventListener("pointerdown", e => {
-  const b = e.target.closest("#listenBtn"); if (!b || e.button > 0) return;
-  e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) {} pressStart("button");
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("#listenBtn"); if (!b) return;
+  e.preventDefault(); toggle(e.detail === 0 ? "keyboard" : "button");
 });
-document.addEventListener("pointerup", () => { if (pressed && pressSource === "button") pressEnd("button"); });
-document.addEventListener("pointercancel", () => { if (pressed && pressSource === "button") pressEnd("button"); });
 document.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest("#listenBtn")) e.preventDefault(); });
 
 const editable = el => !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
@@ -308,17 +364,15 @@ function spaceOk(e) {
   if (e.code !== "Space" || e.ctrlKey || e.metaKey || e.altKey) return false;
   if (editable(e.target) || editable(document.activeElement)) return false;                 // typing: Space is a space
   const a = e.target.closest ? e.target.closest("button, a, summary, [role=button]") : null;
-  if (a && a.id !== "listenBtn") return false;                                              // keep Space working on other buttons (keyboard access)
+  if (a) return false;                                                                       // focused button: Space clicks it (🎙 included -> click handler)
   if ($("app").hidden) return false;                                                        // signed out
   return true;
 }
-document.addEventListener("keydown", e => { if (!spaceOk(e)) return; e.preventDefault(); if (!e.repeat) pressStart("space"); });
-document.addEventListener("keyup", e => { if (e.code === "Space" && pressed) { e.preventDefault(); pressEnd("space"); } });
-addEventListener("blur", () => { if (pressSource === "space" && state === "recording") cancelRecording("window lost focus while Space was held"); });
+document.addEventListener("keydown", e => { if (!spaceOk(e)) return; e.preventDefault(); if (!e.repeat) toggle("space"); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) { cancelRecording("page in the background"); stopPlayback(); } });
 addEventListener("pagehide", () => { cancelRecording("page hidden"); stopPlayback(); });
 
 function stopAll() { cancelRecording("stopped"); if (ctrl) ctrl.abort(); stopPlayback(); if (mic) { mic.getTracks().forEach(t => t.stop()); mic = null; } show("idle"); $("vstatus").hidden = true; }
 
-window.LibDobby = { stop: stopAll, say, refreshStatus, state: () => state, isOn: () => state === "recording", _take: takeSentences, _P: P };
+window.LibDobby = { stop: stopAll, say, refreshStatus, times, toggle, state: () => state, isOn: () => state === "recording", _take: takeSentences, _P: P };
 })();
