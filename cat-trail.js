@@ -1,12 +1,11 @@
 /* Dobby follows the pointer: a small cat that glides after the cursor (or the finger on a phone)
    and paints a fading brush stroke behind it. Pure canvas + one <img>, pointer-events:none, so it
    never blocks a click. The loop sleeps when nothing moves. Toggle: #trailBtn, remembered in
-   localStorage "lib-trail". Default off when the system asks for reduced motion. */
+   localStorage "lib-trail2". On by default (Ahlam asked). */
 (function () {
-  const KEY = "lib-trail", LIFE = 650, SIZE = 56;
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  const KEY = "lib-trail2", LIFE = 420, SIZE = 48;
   let on;
-  try { const v = localStorage.getItem(KEY); on = v ? v === "on" : !reduce.matches; } catch (_) { on = !reduce.matches; }
+  try { on = localStorage.getItem(KEY) !== "off"; } catch (_) { on = true; }   // on by default; 🐾 turns it off
 
   const cv = document.createElement("canvas"); cv.className = "trail-cv"; cv.setAttribute("aria-hidden", "true");
   const cat = document.createElement("img"); cat.className = "trail-cat"; cat.alt = ""; cat.setAttribute("aria-hidden", "true");
@@ -53,12 +52,12 @@
     if (!show) { pts.length = 0; g.clearRect(0, 0, W, H); return; }
 
     // smooth chase: frame-rate independent easing towards the target
-    const k = 1 - Math.pow(1 - 0.16, dt / 16.7);
+    const k = 1 - Math.pow(1 - 0.34, dt / 16.7);
     const px = x, py = y;
     x += (tx - x) * k; y += (ty - y) * k;
     const vx = (x - px) / Math.max(dt, 1);
     if (Math.abs(vx) > 0.05) face = vx < 0 ? -1 : 1;
-    tilt += (Math.max(-14, Math.min(14, vx * 9)) - tilt) * 0.2;
+    tilt += (Math.max(-8, Math.min(8, vx * 5)) - tilt) * 0.3;
     cat.style.transform = `translate3d(${x - SIZE / 2}px,${y - SIZE / 2}px,0) rotate(${tilt}deg) scaleX(${face})`;
 
     if (Math.hypot(x - px, y - py) > 0.8) pts.push({ x, y: y + SIZE * 0.22, t: now });
@@ -84,8 +83,8 @@
         const m1x = (a.x + b.x) / 2, m1y = (a.y + b.y) / 2;
         g.beginPath(); g.moveTo(m0x, m0y); g.quadraticCurveTo(a.x, a.y, m1x, m1y);
         g.strokeStyle = pass ? c1 : c2;
-        g.globalAlpha = pass ? life * 0.95 : life * 0.28;
-        g.lineWidth = pass ? 1.5 + life * 7 : 6 + life * 16;
+        g.globalAlpha = pass ? life * 0.55 : life * 0.1;
+        g.lineWidth = pass ? 1 + life * 2.5 : 3 + life * 6;
         g.stroke();
       }
     }
