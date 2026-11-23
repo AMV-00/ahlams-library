@@ -6,6 +6,7 @@
     "seed": "node scripts/seed.mjs",
     "check": "node scripts/check-secrets.mjs",
     "contrast": "node scripts/contrast.mjs",
+    "test-voice": "node scripts/test-voice.mjs",
     "inbox:check": "node scripts/inbox-upload.mjs --dry-run"
   },
   "devDependencies": {
