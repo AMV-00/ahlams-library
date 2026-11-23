@@ -23,3 +23,4 @@ Open: real call to `cat` after the model fix must be confirmed with scripts/test
 - [Lesson: Groq request size + her Arabic name](lessons/groq-request-size.md)
 - [Decision: 📎 attachments + honest abilities](decisions/2026-11-23-dobby-attachments.md)
 - [Decision: chat history in config table](decisions/2026-11-23-chat-history.md)
+- [Decision: CLF-C02 study mode + add-item form](decisions/2026-11-23-clf-c02-study.md) — 📘 panel, tracked quizzes (config "clf"), study chat notes in _shared/clf.ts; stubbed e2e OK
