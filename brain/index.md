@@ -19,3 +19,4 @@ Open: real call to `cat` after the model fix must be confirmed with scripts/test
 - [Decision: UX pass](decisions/2026-11-23-ux-pass.md) — filters panel, status select, card layout, empty states
 - [Decision: cat follows the pointer](decisions/2026-11-23-cat-follows-pointer.md) — 🐾 toggle; Playwright check OK (stubbed)
 - [Decision: recommendations «لك الحين»](decisions/2026-11-23-recommendations.md) — recs.js + _shared/recs.ts (keep in sync); stubbed e2e OK
+- [Decision: dark depth](decisions/2026-11-23-dark-depth.md) — tonal steps, gradients, elevation
