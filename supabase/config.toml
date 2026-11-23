@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.cat-voice]
 verify_jwt = true
+
+[functions.cat-fetch]
+verify_jwt = true

@@ -11,8 +11,10 @@ const A = () => window.LibApp, $ = id => document.getElementById(id);
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
 const MAX_FILE = 25 * 1024 * 1024, MAX_TEXT = 400000, CHUNK = 1400, BUDGET = 8000;
 const T = {
-  ar: { attach: "إرفاق ملف (PDF، صورة، نص)", reading: "أقرأ الملف…", pages: n => `${n} صفحة`, remove: "إزالة الملف", big: "الملف أكبر من 25 MB.", type: "أقدر أقرأ PDF والصور وملفات النص فقط.", fail: "ما قدرت أقرأ الملف.", empty: "ما لقيت نص في الملف (ممكن يكون PDF صور، أرسليه كصورة).", ready: (n) => `قرأت «${n}». اسأليني عنه.`, many: "وصلتي للحد: 10 ملفات. شيلي واحد بـ × عشان تضيفين غيره." },
-  en: { attach: "Attach a file (PDF, image, text)", reading: "Reading the file…", pages: n => `${n} pages`, remove: "Remove file", big: "The file is bigger than 25 MB.", type: "I can read PDF, images and text files only.", fail: "Couldn't read the file.", empty: "No text found in the file (a scanned PDF? send it as an image).", ready: (n) => `I read “${n}”. Ask me about it.`, many: "Limit reached: 10 files. Remove one with × to add another." }
+  ar: { attach: "إرفاق ملف (PDF، صورة، نص)", reading: "أقرأ الملف…", pages: n => `${n} صفحة`, remove: "إزالة الملف", big: "الملف أكبر من 25 MB.", type: "أقدر أقرأ PDF والصور وملفات النص فقط.", fail: "ما قدرت أقرأ الملف.", empty: "ما لقيت نص في الملف (ممكن يكون PDF صور، أرسليه كصورة).", ready: (n) => `قرأت «${n}». اسأليني عنه.`, link: "أفتح الرابط…", folder: (n, k) => `المجلد «${n}» فيه ${k} ملف، أقرأ أول ${Math.min(k, 10)}…`,
+        lerr: { private: "الرابط خاص. خليه «Anyone with the link» في Drive وارسليه مرة ثانية، أو نزلي الملف وارفعيه بـ 📎.", "too large": "الملف أكبر من 15 MB، نزليه وارفعيه بـ 📎.", unsupported: "نوع الملف هذا ما أقدر أقرأه من الرابط.", "empty folder": "المجلد فاضي أو خاص.", blocked: "هذا الرابط ما أقدر أفتحه.", def: "ما قدرت أفتح الرابط." }, many: "وصلتي للحد: 10 ملفات. شيلي واحد بـ × عشان تضيفين غيره." },
+  en: { attach: "Attach a file (PDF, image, text)", reading: "Reading the file…", pages: n => `${n} pages`, remove: "Remove file", big: "The file is bigger than 25 MB.", type: "I can read PDF, images and text files only.", fail: "Couldn't read the file.", empty: "No text found in the file (a scanned PDF? send it as an image).", ready: (n) => `I read “${n}”. Ask me about it.`, link: "Opening the link…", folder: (n, k) => `Folder “${n}” has ${k} files, reading the first ${Math.min(k, 10)}…`,
+        lerr: { private: "The link is private. Set it to “Anyone with the link” in Drive, or download the file and attach it with 📎.", "too large": "The file is over 15 MB; download it and attach it with 📎.", unsupported: "I can't read this file type from a link.", "empty folder": "The folder is empty or private.", blocked: "I can't open this link.", def: "Couldn't open the link." }, many: "Limit reached: 10 files. Remove one with × to add another." }
 };
 const L = () => T[A().lang()] || T.ar;
 let docs = [];                 // [{ name, text, chunks: string[], info }]
@@ -108,6 +110,59 @@ function paintChip() {
     c.append(s, x); el.append(c);
   });
 }
+/* ---------- links: the `cat-fetch` function downloads public pages / Drive files / folders; PDFs are read here with pdf.js ---------- */
+const seen = new Set();
+const URL_RE = /https?:\/\/[^\s<>"'()]+[^\s<>"'().,،؛!?؟]/g;
+async function fetchLink(url) {
+  const { data, error } = await A().sb.functions.invoke("cat-fetch", { body: { url } });
+  if (error) { try { if (error.context && error.context.json) return await error.context.json(); } catch (_) {} return { error: "fetch" }; }
+  return data || { error: "fetch" };
+}
+function addDoc(name, text, info) {
+  text = String(text || "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  if (text.replace(/\[صفحة \d+\]/g, "").trim().length < 20) return false;
+  const d = { name: String(name).slice(0, 80), text: text.slice(0, MAX_TEXT), chunks: [], info };
+  d.chunks = chunk(d.text);
+  docs = docs.filter(x => x.name !== d.name).concat(d).slice(-MAX_DOCS); paintChip();
+  console.log(`[attach] ${d.name}: ${d.text.length} chars, ${d.chunks.length} parts`);
+  return true;
+}
+async function readLinkResult(j) {
+  if (j.kind === "text") return addDoc(j.name, j.text, "🔗");
+  if (j.kind === "pdf") {
+    const bin = atob(j.b64), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const r = await readPdf(new Blob([u8], { type: "application/pdf" }));
+    return addDoc(j.name, r.text, "🔗 " + r.info);
+  }
+  return false;
+}
+/** Read every new link in her message before Dobby answers. Returns quickly when there is none. */
+async function fromText(text) {
+  const urls = [...new Set((String(text).match(URL_RE) || []))].filter(u => !seen.has(u)).slice(0, 5);
+  if (!urls.length) return;
+  const app = A();
+  for (const url of urls) {
+    seen.add(url);
+    const bubble = app.addMsg("cat", L().link + " " + url.slice(0, 60), false);
+    try {
+      const j = await fetchLink(url);
+      if (j.error) { bubble.textContent = (L().lerr[j.error] || L().lerr.def) + " (" + url.slice(0, 50) + ")"; seen.delete(url); continue; }
+      if (j.kind === "folder") {
+        const files = j.files.filter(f => /\/file\/d\//.test(f.url));
+        bubble.textContent = L().folder(j.name, files.length);
+        const got = [];
+        for (const f of files.slice(0, 10)) {
+          const k = await fetchLink(f.url);
+          if (!k.error && await readLinkResult({ ...k, name: f.name || k.name })) got.push(f.name || k.name);
+        }
+        bubble.textContent = got.length ? L().ready(got.join("، ")) : L().lerr["empty folder"];
+        continue;
+      }
+      bubble.textContent = await readLinkResult(j) ? L().ready(j.name) : L().empty;
+    } catch (e) { console.error("[attach] link", e); bubble.textContent = L().lerr.def; seen.delete(url); }
+  }
+}
+
 async function onFiles(list) {
   for (const f of [...(list || [])].slice(0, MAX_DOCS)) await onFile(f);
   $("attFile").value = "";
@@ -155,6 +210,6 @@ function full() {
   const text = docs.map(d => `### ${d.name}\n${d.text}`).join("\n\n");
   return { name: docs.map(d => d.name).join("، "), text: text.slice(0, 60000), partial: text.length > 60000 };
 }
-window.LibAttach = { contextFor, full, clear() { docs = []; paintChip(); }, has: () => docs.length > 0, paint, _chunk: chunk };
+window.LibAttach = { contextFor, full, fromText, clear() { docs = []; seen.clear(); paintChip(); }, has: () => docs.length > 0, paint, _chunk: chunk };
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
