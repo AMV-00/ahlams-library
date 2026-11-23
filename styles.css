@@ -127,7 +127,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 @keyframes float{from{transform:translateY(0)}to{transform:translateY(-8px)}}
 /* the cat that follows the pointer + its brush trail (cat-trail.js); never takes clicks */
 .trail-cv{position:fixed;inset:0;width:100vw;height:100vh;z-index:44;pointer-events:none;opacity:0;transition:opacity .3s}
-.trail-cat{position:fixed;top:0;left:0;z-index:45;width:56px;height:56px;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .3s;will-change:transform;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))}
+.trail-cat{position:fixed;top:0;left:0;z-index:45;width:48px;height:48px;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .3s;will-change:transform;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))}
 .trail-cv.on,.trail-cat.on{opacity:1}
 #trailBtn[aria-pressed="true"]{border-color:var(--cyan);color:var(--ink)}
 .toast{position:fixed;bottom:128px;inset-inline-start:16px;z-index:41;background:var(--panel-2);border:1px solid var(--line-2);border-radius:12px;padding:8px 12px;font-size:13px;max-width:240px}
