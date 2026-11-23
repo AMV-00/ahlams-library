@@ -5,3 +5,7 @@ Decision: attach.js. PDF text extracted in the browser with pdf.js 3.11.174 (cdn
 System prompt now states: cannot open links/Drive/web; can read files attached with 📎; never claim other abilities.
 Verified: stubbed headless test (generated 5-page PDF -> 15k chars, question about one section picks it; image path calls extract_image). NOT verified: real vision model call (needs live test). Scanned PDFs have no text -> she is told to send pages as images.
 Revisit if: vision model errors (check function logs "groq vision error"), or she needs whole-book Q&A (then store chunks in Supabase + embeddings).
+
+## Update: links (2026-11-23)
+New Edge Function `cat-fetch` ({url}): https only, no IP literals/localhost/internal/supabase hosts, redirects checked per hop, 15 MB cap, nothing stored. Drive file -> drive.usercontent download; Drive folder -> embeddedfolderview parsed (first 10 files); Docs -> txt, Sheets -> csv, Slides -> pdf; HTML -> text; PDF -> base64 to the page, parsed by pdf.js. Private links -> {error:"private"} and the page tells her to set "Anyone with the link". app.js `ask()` reads new links in her message (max 5) before calling `cat`; they become attached docs. System prompt now: links are read only if their text is attached; never pretend.
+NOT verified against live sites (cloud sandbox can't reach them); first real test is hers.

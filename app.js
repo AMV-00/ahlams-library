@@ -275,6 +275,7 @@ async function ask(text){
   if(busy||!text.trim()) return;
   busy=true; addMsg("me",text); setPose("think"); const bubble=addMsg("cat",C().think,false);
   try{
+    if(window.LibAttach){ bubble.textContent=C().think; await LibAttach.fromText(text); $("msgs").appendChild(bubble.closest(".m")); }
     const doc=window.LibAttach?LibAttach.contextFor(text):null;
     const {data,error}=await sb.functions.invoke("cat",{body:{messages:history,name:name,doc}});
     if(error||!data||!data.text) throw (error||new Error("empty"));
