@@ -14,14 +14,14 @@ const err = (...a) => console.error("[dobby]", ...a);
 const now = () => performance.now();
 
 const SILENCE_MS = 1500, NO_SPEECH_MS = 7000, VAD_CALIB_MS = 300, VAD_MIN_TH = 0.012, VAD_MAX_TH = 0.08;
-const MIN_REC_MS = 350, MAX_REC_MS = 30000, MIC_WARM_MS = 8000, TTS_TIMEOUT_MS = 2500, TTS_PARALLEL = 3, WARM_EVERY_MS = 20000;
+const MIN_REC_MS = 350, MAX_REC_MS = 30000, MIC_WARM_MS = 60000, TTS_TIMEOUT_MS = 2500, TTS_PARALLEL = 3, WARM_EVERY_MS = 20000;
 
 /* ---------- status UI ---------- */
 const MSG = {
   ar: { rec: "أسمعك… اضغطي للإرسال أو اسكتي ثانية ونص", mic: "جاري تشغيل المايك…", thinking: "أفكر…", speaking: "أتكلم… اضغطي لقاطعني", hint: "اضغطي 🎙 (أو المسطرة) وتكلمي، وأرسل لما تسكتين",
-        denied: "ما قدرت أستخدم المايك. اسمحي للموقع من إعدادات المتصفح.", nospeech: "ما سمعت شي، جربي مرة ثانية.", err: "صار خطأ في الصوت. جربي مرة ثانية.", unsupported: "المتصفح ما يدعم تسجيل الصوت." },
+        denied: "ما قدرت أستخدم المايك. اسمحي للموقع من إعدادات المتصفح.", nospeech: "ما سمعت شي، جربي مرة ثانية.", unclear: "ما فهمت عليك، عيديها بصوت أوضح.", err: "صار خطأ في الصوت. جربي مرة ثانية.", unsupported: "المتصفح ما يدعم تسجيل الصوت." },
   en: { rec: "Listening… tap to send, or just pause", mic: "Starting the microphone…", thinking: "Thinking…", speaking: "Speaking… press to interrupt", hint: "Tap 🎙 (or Space) and talk; I send when you pause",
-        denied: "Couldn't use the microphone. Allow it in the browser's site settings.", nospeech: "I didn't hear anything, try again.", err: "Voice error. Try again.", unsupported: "This browser can't record audio." }
+        denied: "Couldn't use the microphone. Allow it in the browser's site settings.", nospeech: "I didn't hear anything, try again.", unclear: "I didn't catch that, say it again a bit clearer.", err: "Voice error. Try again.", unsupported: "This browser can't record audio." }
 };
 const L = () => MSG[A().lang()] || MSG.ar;
 let state = "idle";                                  // idle | mic | recording | thinking | speaking
@@ -212,6 +212,15 @@ function takeSentences(buf, first) {
 }
 
 let ctrl = null;
+const NAME_LABEL = /^\s*(?:dobby|doby|دوبي)\s*[:：]\s*/i;
+/** Short soft "ding" when the mic is really recording, so she knows when to start talking. */
+function beep() {
+  try {
+    const c = audioCtx(), o = c.createOscillator(), g = c.createGain(), t = c.currentTime;
+    o.frequency.value = 880; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.08, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.16);
+  } catch (e) {}
+}
 async function send(blob, speechEnd) {
   const app = A();
   if (app.busy()) { warn("busy, ignoring this recording"); show("idle"); return; }
@@ -222,7 +231,7 @@ async function send(blob, speechEnd) {
   app.setPose("think");
   const bubble = app.addMsg("cat", "…", false);
   ctrl = new AbortController(); const myCtrl = ctrl;
-  let full = "", pending = "", first = true, userPushed = false, stt = null;
+  let full = "", pending = "", first = true, userPushed = false, stt = null, named = false;
   try {
     const tok = await app.token();
     const fd = new FormData();
@@ -242,19 +251,29 @@ async function send(blob, speechEnd) {
         if (j.error) { err("cat-voice stream error:", j); throw new Error(j.error); }
         if (j.stt !== undefined) {
           marks.stt = now(); marks.server = j.ms; stt = String(j.stt || "").trim(); log("transcript:", JSON.stringify(stt), "(whisper", j.ms && j.ms.stt, "ms on the server)");
-          if (!stt) { meBubble.closest(".m").remove(); bubble.closest(".m").remove(); app.setBusy(false); app.setPose("happy"); flash(L().nospeech); return; }
+          if (!stt) {
+            if (j.unclear) warn("unclear transcript, not answered:", JSON.stringify(j.heard), "logprob", j.ms && j.ms.logprob);
+            meBubble.closest(".m").remove(); bubble.closest(".m").remove(); app.setBusy(false); app.setPose("happy");
+            flash(j.unclear ? L().unclear + (j.heard ? " (سمعت: " + String(j.heard).slice(0, 40) + ")" : "") : L().nospeech, 6000); return;
+          }
           meBubble.textContent = stt; meBubble.dataset.raw = stt; setHeard(stt);
           app.history().push({ role: "user", content: stt }); userPushed = true;
         }
         if (j.t) {
           if (!marks.token) { marks.token = now(); log("first model token", Math.round(marks.token - tRelease), "ms after release"); }
-          full += j.t; pending += j.t; bubble.textContent = full; $("msgs").scrollTop = 1e9;
+          full += j.t; pending += j.t;
+          if (!named) {                                    // the model sometimes starts with "Dobby:": never show or speak it
+            if (full.length < 12 && !/[:：]/.test(full)) continue;
+            full = pending = full.replace(NAME_LABEL, ""); named = true;
+          }
+          bubble.textContent = full; $("msgs").scrollTop = 1e9;
           const [sents, rest] = takeSentences(pending, first); pending = rest;
           for (const s of sents) { if (first && !marks.ttsReq) marks.ttsReq = now(); first = false; enqueue(s); }
         }
         if (j.done && j.ms) marks.server = { ...(marks.server || {}), ...j.ms };
       }
     }
+    if (!named) { full = full.replace(NAME_LABEL, ""); pending = full; named = true; }
     if (pending.trim()) { if (!marks.ttsReq) marks.ttsReq = now(); enqueue(pending); pending = ""; }
     if (!full.trim()) throw new Error("empty reply");
     app.setReply(bubble, full); app.history().push({ role: "assistant", content: full });
@@ -292,6 +311,7 @@ function vadStart(stream) {
       const floor = quiet.length >= 3 ? quiet[Math.floor(quiet.length / 2)] : 0;
       vad.th = Math.min(VAD_MAX_TH, Math.max(VAD_MIN_TH, floor * 3)); vad.calib = []; log(`VAD threshold ${vad.th.toFixed(3)} (room noise ${floor.toFixed(3)})`);
     }
+    if (el < 220) return;                                                                      // the start "ding" itself is not speech
     if (rms >= vad.th) { if (++vad.voiced >= 2) { if (!vad.heard) log(`speech detected after ${Math.round(el)} ms`); vad.heard = true; vad.lastVoice = t; } }
     else vad.voiced = 0;
     if (vad.heard && t - vad.lastVoice >= SILENCE_MS) { vad.speechEnd = vad.lastVoice; log(`${SILENCE_MS} ms of silence -> sending`); stopRec("silence"); }
@@ -317,10 +337,10 @@ async function startRec(source) {
   catch (e) { err("getUserMedia failed:", e && e.name, e && e.message); pressed = false; flash(L().denied, 7000); return; }
   if (!pressed || cancelled) { pressed = false; micIdleLater(); show("idle"); $("vstatus").hidden = true; return; }   // tapped again before the mic was ready
   chunks = [];
-  try { mr = new MediaRecorder(stream, pickMime() ? { mimeType: pickMime() } : undefined); }
+  try { mr = new MediaRecorder(stream, { ...(pickMime() ? { mimeType: pickMime() } : {}), audioBitsPerSecond: 64000 }); }
   catch (e) { err("MediaRecorder failed:", e); pressed = false; flash(L().err); return; }
   mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-  mr.start(); recStart = now(); show("recording"); vadStart(stream);
+  mr.start(); recStart = now(); show("recording"); vadStart(stream); beep();
   log(`recording started (${source}, ${mr.mimeType})`);
   clearTimeout(autoStopT); autoStopT = setTimeout(() => { if (pressed) { warn("30 s limit reached"); stopRec("limit"); } }, MAX_REC_MS);
 }

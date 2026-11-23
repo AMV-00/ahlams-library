@@ -41,7 +41,8 @@ Deno.serve(async (req) => {
   sttForm.set("language", lang);
   sttForm.set("temperature", "0");
   sttForm.set("response_format", "verbose_json");
-  sttForm.set("prompt", "Ahlam's Library, Dobby, دوبي, SOC, DFIR, FDE, AWS, Linux, Bandit, Wazuh, Splunk");
+  // Arabic-first prompt: an English name here made Whisper write "Doby, Doby" and Latin text for unclear Arabic.
+  sttForm.set("prompt", "دوبي، وش أبدأ فيه اليوم؟ مكتبتي فيها SOC و DFIR و FDE و AWS و Linux و Wazuh و Splunk.");
   const [libRes, sttRes] = await Promise.all([
     getLibrary(req, user.sub, 8000),
     fetch("https://api.groq.com/openai/v1/audio/transcriptions", { method: "POST", headers: { Authorization: `Bearer ${key}` }, body: sttForm }),
@@ -53,9 +54,13 @@ Deno.serve(async (req) => {
     return json(req, { error: "stt", status: sttRes.status, detail: t.slice(0, 200) }, 502);
   }
   const sj = await sttRes.json();
-  const segs = (sj.segments ?? []) as { no_speech_prob?: number }[];
+  const segs = (sj.segments ?? []) as { no_speech_prob?: number; avg_logprob?: number; compression_ratio?: number }[];
   const silent = segs.length > 0 && segs.every((s) => (s.no_speech_prob ?? 0) > 0.7);   // Whisper invents text on silence
-  const text = silent ? "" : String(sj.text ?? "").trim();
+  const lp = segs.length ? segs.reduce((a, s) => a + (s.avg_logprob ?? 0), 0) / segs.length : 0;
+  const raw = silent ? "" : String(sj.text ?? "").trim();
+  // She often calls him by name first ("دوبي، ..."): drop it so the model sees only the question.
+  const text = raw.replace(/^\s*(?:(?:دوبي|دوبى|دوبیی|dobby|doby|dobi)[\s,،.!?؟:]*)+/i, "").trim();
+  const unclear = !!raw && (!text || lp < -1.0 || segs.some((s) => (s.compression_ratio ?? 0) > 2.6));
   const sttMs = Date.now() - t0;
 
   const enc = new TextEncoder();
@@ -63,8 +68,8 @@ Deno.serve(async (req) => {
     async start(controller) {
       const send = (o: unknown) => controller.enqueue(enc.encode(`data: ${JSON.stringify(o)}\n\n`));
       try {
-        send({ stt: text, ms: { stt: sttMs } });
-        if (!text) { send({ done: true }); return; }
+        send({ stt: unclear ? "" : text, heard: raw, unclear, ms: { stt: sttMs, logprob: Math.round(lp * 100) / 100 } });
+        if (!text || unclear) { send({ done: true }); return; }
         const system = buildSystem({ name: (meta.name ?? "").toString().slice(0, 24) || "Dobby", voice: true, lib: libRes });
         const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
