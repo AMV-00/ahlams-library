@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "id": "c-jobs-example-soc",
+      "title": "محلل SOC مبتدئ",
+      "title_en": "Junior SOC Analyst",
+      "tab": "c-jobs",
+      "type": "job",
+      "sub": "الرياض · 0-2 سنة",
+      "summary_ar": "مثال فقط: هذا الملف يبدأ بـ _ فلا يُرفع.",
+      "summary_en": "Example only: files starting with _ are ignored.",
+      "url": "https://example.com/jobs/123",
+      "due": "2026-12-15",
+      "added": "2026-11-23",
+      "notes": "المصدر: مثال"
+    }
+  ],
+  "delete": [],
+  "prune_expired": ["c-jobs", "c-madinah"]
+}

@@ -5,7 +5,8 @@
   "scripts": {
     "seed": "node scripts/seed.mjs",
     "check": "node scripts/check-secrets.mjs",
-    "contrast": "node scripts/contrast.mjs"
+    "contrast": "node scripts/contrast.mjs",
+    "inbox:check": "node scripts/inbox-upload.mjs --dry-run"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.45.4"

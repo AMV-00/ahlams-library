@@ -12,3 +12,4 @@ Open: real call to `cat` after the model fix must be confirmed with scripts/test
 - [Decision: readable theme + light mode](decisions/2026-11-22-readable-theme.md) (npm run contrast must pass before publishing CSS changes)
 - [Lesson: wake word variants + live transcript](lessons/wake-word-asr-variants.md) (real recognition still unverified; ask Ahlam for [dobby] console lines)
 - [Decision: push-to-talk (supersedes wake word)](decisions/2026-11-22-push-to-talk.md) — e2e 29/29 stubbed; real latency/accuracy not yet measured (scripts/test-voice.mjs)
+- [Decision: inbox/ + Action upload](decisions/2026-11-23-inbox-action.md) (real run waits for SUPABASE_SECRET_KEY secret)
