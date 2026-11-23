@@ -347,3 +347,30 @@ body{background:
 .bar i{background:linear-gradient(90deg,var(--accent),var(--cyan))}
 [dir="rtl"] .bar i{background:linear-gradient(270deg,var(--accent),var(--cyan))}
 @media (prefers-reduced-motion:reduce){.card:hover{transform:none}}
+
+/* full-screen Dobby: everything sized in em from one base that grows with the screen (and with browser zoom-out), so it stays readable */
+body.chat-full .chat{font-size:clamp(18px,1.05vw,30px)}
+body.chat-full .chat :is(button,textarea,select,input){font-size:inherit}
+body.chat-full .chat-h{padding-block:.6em;gap:.75em}
+body.chat-full .chat-h>img{width:2.8em;height:2.8em}
+body.chat-full .chat-h .who b{font-size:1.15em}
+body.chat-full .chat-h .who small{font-size:.75em}
+body.chat-full .chat-tools{gap:.3em}
+body.chat-full .ib{width:2.4em;height:2.4em;border-radius:.6em;font-size:1em}
+body.chat-full .ib svg{width:1.2em;height:1.2em}
+body.chat-full .msgs{gap:1em;padding-block:1.2em;padding-inline:max(1em,calc((100% - 46em)/2))}
+body.chat-full .chat-foot>*,body.chat-full .settings{max-width:46em}
+body.chat-full .chat-h{padding-inline:max(1em,calc((100% - 46em)/2))}
+body.chat-full .m{font-size:1em;padding:.75em 1em;border-radius:1em;line-height:1.75}
+body.chat-full .m .spk{font-size:.75em;padding:.2em .8em}
+body.chat-full .m.md code{font-size:.85em}
+body.chat-full .m.md table{font-size:.85em}
+body.chat-full .m.md th,body.chat-full .m.md td{padding:.4em .7em}
+body.chat-full .chat-foot{padding:.75em 1em 1em;gap:.6em}
+body.chat-full .quick button{font-size:.8em;padding:.35em .9em}
+body.chat-full .composer{border-radius:1em;padding:.35em}
+body.chat-full .composer textarea{font-size:1em;padding:.45em .6em;max-height:9em}
+body.chat-full .composer .send{width:2.4em;height:2.4em;border-radius:.6em}
+body.chat-full .composer .send svg{width:1.2em;height:1.2em}
+body.chat-full .vstatus{font-size:.85em}
+body.chat-full form.settings{font-size:.8em}
