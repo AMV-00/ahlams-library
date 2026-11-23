@@ -27,6 +27,7 @@ for (const [name, T] of [["dark", dark], ["light", light]]) {
     ["done on done-soft/panel", "done", soft("done-soft", "panel")],
     ["due on due-soft/panel", "due", soft("due-soft", "panel")],
     ["due on panel (card)", "due", surf.panel],
+    ["due on panel-2 (recommendation reason)", "due", surf["panel-2"]],
     ["rec on rec-soft/panel-2", "rec", soft("rec-soft", "panel-2")],
   ];
   const ui = [     // controls & graphics need 3:1
