@@ -9,7 +9,8 @@ import { cors, json, userFromJwt } from "../_shared/auth.ts";
 import { buildSystem, getLibrary } from "../_shared/chat.ts";
 
 const STT_MODEL = Deno.env.get("GROQ_STT_MODEL") ?? "whisper-large-v3-turbo";
-const VOICE_MODEL = Deno.env.get("GROQ_VOICE_MODEL") ?? "openai/gpt-oss-20b";
+// Same model as the text chat (gpt-oss-120b) so spoken answers are as smart; reasoning_effort "low" keeps the first token fast.
+const VOICE_MODEL = Deno.env.get("GROQ_VOICE_MODEL") ?? "openai/gpt-oss-120b";
 const MAX_AUDIO = 5 * 1024 * 1024;
 
 Deno.serve(async (req) => {
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: VOICE_MODEL, temperature: 0.5, max_completion_tokens: 300, stream: true,
+            model: VOICE_MODEL, temperature: 0.6, max_completion_tokens: 700, stream: true,
             reasoning_effort: "low", include_reasoning: false,
             messages: [{ role: "system", content: system }, ...history, { role: "user", content: text.slice(0, 2000) }],
           }),
