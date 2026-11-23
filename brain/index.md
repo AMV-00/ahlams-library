@@ -13,3 +13,4 @@ Open: real call to `cat` after the model fix must be confirmed with scripts/test
 - [Lesson: wake word variants + live transcript](lessons/wake-word-asr-variants.md) (real recognition still unverified; ask Ahlam for [dobby] console lines)
 - [Decision: push-to-talk (supersedes wake word)](decisions/2026-11-22-push-to-talk.md) — e2e 29/29 stubbed; real latency/accuracy not yet measured (scripts/test-voice.mjs)
 - [Decision: job / event card types](decisions/2026-11-23-job-event-types.md) (SQL for existing rows: supabase/sql/2026-11-23-job-event-types.sql, run by Ahlam)
+- [Decision: tap-to-talk + 1.5 s silence stop](decisions/2026-11-23-tap-to-talk.md) — stubbed e2e OK; real latency: run `npm run test-voice`, or LibDobby.times() in the page console

@@ -199,7 +199,7 @@ function paintCat(){
   if(!history.length){ $("msgs").innerHTML=""; addMsg("cat",t.hi(nm()),false); }
   $("voiceBtn").hidden=!("speechSynthesis" in window);
   $("listenBtn").hidden=!(navigator.mediaDevices&&window.MediaRecorder);
-  $("listenBtn").title=lang==="ar"?"اضغطي وامسكي وتكلمي (أو مسطرة المسافة)، وشيلي إصبعك للإرسال":"Hold and talk (or hold Space), let go to send";
+  $("listenBtn").title=lang==="ar"?"اضغطي وتكلمي (أو المسطرة)، واضغطي ثانية للإرسال أو اسكتي ثانية ونص":"Tap and talk (or Space); tap again or pause 1.5 s to send";
   $("voiceSel").value=ttsVoice; $("voiceLbl").textContent=lang==="ar"?"الصوت":"Voice";
   if(window.LibDobby) LibDobby.refreshStatus();
 }
