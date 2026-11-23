@@ -24,8 +24,36 @@ export async function getLibrary(req: Request, sub: string, max: number): Promis
   return lib.slice(0, max);
 }
 
+type Msg = { role: string; content: string };
+/** Keep the newest messages that fit in `maxChars` (Groq's free tier rejects big requests: 413/429 on tokens per minute).
+ *  One very long pasted message or answer is cut instead of pushing everything else out. */
+export function fitHistory(msgs: Msg[], maxChars: number, perMsg = 2500): Msg[] {
+  const out: Msg[] = []; let used = 0;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i], c = m.content.length > perMsg ? m.content.slice(0, perMsg) + " …" : m.content;
+    if (out.length && used + c.length > maxChars) break;
+    out.unshift({ role: m.role, content: c }); used += c.length;
+  }
+  while (out.length && out[0].role !== "user") out.shift();       // start with a user turn
+  return out;
+}
+
+/** POST to Groq chat; if the request is too big or rate-limited by tokens, retry ONCE with a smaller library and history. */
+export async function groqChat(key: string, body: Record<string, unknown>, build: (small: boolean) => Msg[]): Promise<Response> {
+  const call = (small: boolean) => fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, messages: build(small) }),
+  });
+  const r = await call(false);
+  if (r.status !== 413 && r.status !== 429 && r.status !== 400) return r;
+  const t = (await r.text()).slice(0, 300);
+  console.error("groq rejected the full request, retrying smaller", r.status, body.model, t);
+  if (r.status === 429 && !/token|TPM|too large/i.test(t)) return new Response(t, { status: 429 });
+  return call(true);
+}
+
 export function buildSystem(opts: { name: string; voice: boolean; lib: string }): string {
-  const base = `You are ${opts.name}, a friendly black-cat study companion inside Ahlam's private learning library. Ahlam is an IT graduate in Saudi Arabia targeting SOC, Blue Team and DFIR roles, and learning the Forward Deployed Engineer (FDE) track.
+  const base = `You are ${opts.name}, a friendly black-cat study companion inside Ahlam's private learning library. Her name is أحلام (Ahlam): always call her أحلام in Arabic and Ahlam in English, never any other name (not أمل). Ahlam is an IT graduate in Saudi Arabia targeting SOC, Blue Team and DFIR roles, and learning the Forward Deployed Engineer (FDE) track.
 Reply in the language she writes in: Saudi Arabic (simple, warm) or English. Keep technical terms in English.
 You can: explain a resource from her library, quiz her (one question at a time, wait for her answer, then explain), suggest what to start next (when she asks what to do next, use the RECOMMENDED NEXT list and give the reason for each, briefly), or make a short study plan.
 Only recommend resources that are in the library below unless she asks for new ones; when you suggest something not in the library, say clearly it's from your general knowledge and she should verify the link. Never invent links.

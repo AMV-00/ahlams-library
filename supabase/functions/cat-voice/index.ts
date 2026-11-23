@@ -6,7 +6,7 @@
 //   {"stt":"...","ms":{"stt":N}}  {"t":"delta"}...  {"done":true,"ms":{"stt":N,"first_token":N,"total":N}}   or {"error":"..."}
 // GROQ_API_KEY lives ONLY in Supabase secrets.
 import { cors, json, userFromJwt } from "../_shared/auth.ts";
-import { buildSystem, getLibrary } from "../_shared/chat.ts";
+import { buildSystem, fitHistory, getLibrary, groqChat } from "../_shared/chat.ts";
 
 const STT_MODEL = Deno.env.get("GROQ_STT_MODEL") ?? "whisper-large-v3-turbo";
 // Same model as the text chat (gpt-oss-120b) so spoken answers are as smart; reasoning_effort "low" keeps the first token fast.
@@ -71,16 +71,14 @@ Deno.serve(async (req) => {
       try {
         send({ stt: unclear ? "" : text, heard: raw, unclear, ms: { stt: sttMs, logprob: Math.round(lp * 100) / 100 } });
         if (!text || unclear) { send({ done: true }); return; }
-        const system = buildSystem({ name: (meta.name ?? "").toString().slice(0, 24) || "Dobby", voice: true, lib: libRes });
-        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: VOICE_MODEL, temperature: 0.6, max_completion_tokens: 700, stream: true,
-            reasoning_effort: "low", include_reasoning: false,
-            messages: [{ role: "system", content: system }, ...history, { role: "user", content: text.slice(0, 2000) }],
-          }),
-        });
+        const name = (meta.name ?? "").toString().slice(0, 24) || "Dobby";
+        const r = await groqChat(key, {
+          model: VOICE_MODEL, temperature: 0.6, max_completion_tokens: 700, stream: true,
+          reasoning_effort: "low", include_reasoning: false,
+        }, (small) => [
+          { role: "system", content: buildSystem({ name, voice: true, lib: small ? libRes.slice(0, 3000) : libRes }) },
+          ...fitHistory([...history, { role: "user", content: text.slice(0, 2000) }], small ? 2500 : 7000, small ? 1200 : 2500),
+        ]);
         if (!r.ok || !r.body) {
           const t = (await r.text()).slice(0, 300);
           console.error("groq chat error", r.status, VOICE_MODEL, t);
