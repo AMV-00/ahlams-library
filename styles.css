@@ -306,3 +306,44 @@ body.chat-full .chat-h{padding-inline:max(16px,calc((100% - 860px)/2))}
 .rb.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .rb.main:hover{background:var(--accent-hover)}
 .rb.quiet{border-color:transparent;color:var(--ink-3)}
+
+/* depth: layered surfaces, soft gradients and elevation (dark has 4 tonal steps: deep bg -> bg -> panel -> raised) */
+:root{
+  --bg-deep:#111318; --panel-hi:#272c35; --raised:#2f3540; --edge:rgba(255,255,255,.07);
+  --glow:rgba(0,102,255,.16); --glow-2:rgba(0,229,255,.07);
+  --elev-1:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.28);
+  --elev-2:0 2px 4px rgba(0,0,0,.4),0 16px 36px rgba(0,0,0,.45);
+}
+:root[data-theme="light"]{
+  --bg-deep:#e6ebf2; --panel-hi:#ffffff; --raised:#f7f9fc; --edge:rgba(255,255,255,.9);
+  --glow:rgba(0,102,255,.08); --glow-2:rgba(0,120,143,.06);
+  --elev-1:0 1px 2px rgba(20,24,31,.06),0 6px 18px rgba(20,24,31,.07);
+  --elev-2:0 2px 4px rgba(20,24,31,.08),0 16px 36px rgba(20,24,31,.14);
+}
+html{background:var(--bg-deep)}
+body{background:
+  radial-gradient(1100px 520px at 88% -8%,var(--glow),transparent 62%),
+  radial-gradient(800px 460px at 0% 4%,var(--glow-2),transparent 60%),
+  linear-gradient(180deg,var(--bg) 0,var(--bg) 380px,var(--bg-deep) 100%) fixed;
+  min-height:100vh}
+.search,.filters,.recs:not(.off),.addsec,.login,.card{
+  background:linear-gradient(180deg,var(--panel-hi),var(--panel) 140px);
+  box-shadow:inset 0 1px 0 var(--edge),var(--elev-1)}
+.card{transition:border-color .15s var(--ease),box-shadow .2s var(--ease),transform .2s var(--ease)}
+.card:hover{transform:translateY(-2px);box-shadow:inset 0 1px 0 var(--edge),var(--elev-2)}
+.rec{background:linear-gradient(180deg,var(--raised),var(--panel-2));box-shadow:inset 0 1px 0 var(--edge)}
+.ic{background:linear-gradient(180deg,var(--raised),var(--panel-2));box-shadow:inset 0 1px 0 var(--edge)}
+.ghost,.tab:not([aria-selected="true"]){background:linear-gradient(180deg,var(--panel-hi),var(--panel));box-shadow:inset 0 1px 0 var(--edge)}
+.tab[aria-selected="true"],.save{background:linear-gradient(180deg,#0a6cff,#005ce6);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 14px rgba(0,102,255,.3)}
+.save:hover{background:linear-gradient(180deg,#0066ff,#0052cc)}
+.toolbar{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;transition:background-color .2s var(--ease),box-shadow .2s var(--ease)}
+.toolbar.stuck{background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.chat{background:linear-gradient(180deg,var(--panel-hi),var(--panel) 220px)}
+.chat-foot{background:linear-gradient(180deg,var(--panel),var(--panel-hi))}
+.m.cat-m{background:linear-gradient(180deg,var(--raised),var(--panel-2));box-shadow:inset 0 1px 0 var(--edge)}
+.m.me{background:linear-gradient(180deg,#0a6cff,#005ce6);box-shadow:0 4px 12px rgba(0,102,255,.25)}
+.composer{background:var(--bg);box-shadow:inset 0 1px 3px rgba(0,0,0,.25)}
+.bar{background:var(--bg-deep);box-shadow:inset 0 1px 2px rgba(0,0,0,.3)}
+.bar i{background:linear-gradient(90deg,var(--accent),var(--cyan))}
+[dir="rtl"] .bar i{background:linear-gradient(270deg,var(--accent),var(--cyan))}
+@media (prefers-reduced-motion:reduce){.card:hover{transform:none}}

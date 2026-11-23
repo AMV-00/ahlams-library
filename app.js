@@ -334,3 +334,7 @@ $("quick").onclick=e=>{ const b=e.target.closest("button"); if(b) ask(b.textCont
   sb.auth.onAuthStateChange((ev)=>{ if(ev==="SIGNED_OUT") showLogin(); });
 })();
 })();
+/* the sticky search bar gets its own background only once the page scrolls under it */
+(()=>{const tb=document.querySelector(".toolbar"); if(!tb) return; let on=false;
+  const chk=()=>{const s=tb.getBoundingClientRect().top<=0&&scrollY>0; if(s!==on){on=s;tb.classList.toggle("stuck",s)}};
+  addEventListener("scroll",chk,{passive:true}); chk();})();
