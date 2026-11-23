@@ -182,9 +182,10 @@ body.chat-full .m{font-size:17px}
 .composer{display:flex;align-items:flex-end;gap:8px;background:var(--panel-2);border:1px solid var(--ctl);border-radius:16px;padding:6px;transition:border-color .15s var(--ease)}
 .composer:focus-within{border-color:var(--accent)}
 .composer.drop{border-color:var(--accent);border-style:dashed}
-.att-chip{display:flex;align-items:center;gap:6px;align-self:flex-start;max-width:100%;font-size:13px;color:var(--ink);background:var(--panel-2);border:1px solid var(--ctl);border-radius:999px;padding:4px 6px 4px 12px}
+.att-chip{display:flex;flex-wrap:wrap;gap:6px;max-width:100%}
 .att-chip[hidden]{display:none}
-.att-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;unicode-bidi:plaintext}
+.att-one{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-size:13px;color:var(--ink);background:var(--panel-2);border:1px solid var(--ctl);border-radius:999px;padding:4px 6px 4px 12px}
+.att-one span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;unicode-bidi:plaintext}
 .att-chip button{flex:none;width:24px;height:24px;border-radius:50%;border:0;background:transparent;color:var(--ink-2);font-size:16px;line-height:1;padding:0;cursor:pointer}
 .att-chip button:hover{background:var(--line);color:var(--ink)}
 .composer textarea{flex:1;min-width:0;resize:none;background:transparent;border:0;color:var(--ink);font:inherit;font-size:16px;line-height:1.6;padding:8px 10px;max-height:160px;outline:none}
